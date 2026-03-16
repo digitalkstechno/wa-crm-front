@@ -1,30 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
-import {
-  Search, Plus, Filter, Download, MoreHorizontal, X, Users, ChevronDown, Check, Tag
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Filter, MoreHorizontal, X, Users, ChevronDown, Check, Trash2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
-import { initialGroups, type Group } from '@/lib/groups';
+import { type Group } from '@/lib/groups';
+import { apiFetch } from '@/lib/api';
 
 type Customer = {
-  id: number;
+  _id: string;
   name: string;
   phone: string;
   email: string;
   tags: string[];
-  group: string;
+  group: { _id: string; name: string; color: string } | null;
   notes: string;
-  lastActive: string;
-  avatar: string;
+  createdAt: string;
 };
-
-const initialCustomers: Customer[] = [
-  { id: 1, name: 'John Doe', phone: '+1 234 567 890', email: 'john@example.com', tags: ['VIP'], group: 'VIP Clients', notes: '', lastActive: '2023-12-01', avatar: 'JD' },
-  { id: 2, name: 'Alice Smith', phone: '+1 987 654 321', email: 'alice@example.com', tags: ['Lead'], group: 'Leads', notes: '', lastActive: '2023-11-28', avatar: 'AS' },
-  { id: 3, name: 'Robert Fox', phone: '+1 555 012 345', email: 'robert@example.com', tags: ['Lead'], group: 'Leads', notes: '', lastActive: 'Nov 25, 2023', avatar: 'RF' },
-];
 
 const emptyForm = { name: '', phone: '', email: '', tags: [] as string[], group: '', notes: '', tagInput: '' };
 
@@ -36,38 +28,67 @@ const tagColors: Record<string, string> = {
 };
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [groups] = useState<Group[]>(initialGroups);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Partial<typeof emptyForm>>({});
   const [search, setSearch] = useState('');
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
+
+  useEffect(() => {
+    fetchCustomers(search, 1);
+    fetchGroups();
+  }, []);
+
+  const fetchCustomers = async (q = '', p = 1) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (q) params.set('search', q);
+    params.set('page', String(p));
+    params.set('limit', '10');
+    const data = await apiFetch(`/customers?${params.toString()}`);
+    setCustomers(data.data ?? []);
+    if (data.pagination) setPagination(data.pagination);
+    setLoading(false);
+  };
+
+  const fetchGroups = async () => {
+    const data = await apiFetch('/customer-groups');
+    setGroups(data.data ?? []);
+  };
+
+  useEffect(() => {
+    setPage(1);
+    const t = setTimeout(() => fetchCustomers(search, 1), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const handlePageChange = (p: number) => {
+    setPage(p);
+    fetchCustomers(search, p);
+  };
 
   const addTag = (val: string) => {
     const tag = val.trim();
-    if (tag && !form.tags.includes(tag)) {
-      setForm(f => ({ ...f, tags: [...f.tags, tag], tagInput: '' }));
-    } else {
-      setForm(f => ({ ...f, tagInput: '' }));
-    }
+    if (tag && !form.tags.includes(tag)) setForm(f => ({ ...f, tags: [...f.tags, tag], tagInput: '' }));
+    else setForm(f => ({ ...f, tagInput: '' }));
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addTag(form.tagInput);
-    } else if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(form.tagInput); }
+    else if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0)
       setForm(f => ({ ...f, tags: f.tags.slice(0, -1) }));
-    }
   };
 
   const removeTag = (tag: string) => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }));
-
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
 
   const validate = () => {
     const e: Partial<typeof emptyForm> = {};
@@ -78,27 +99,42 @@ const CustomerList = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    const initials = form.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    setCustomers(prev => [...prev, {
-      id: Date.now(),
-      ...form,
-      lastActive: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      avatar: initials,
-    }]);
+    setSaving(true);
+    const payload = { name: form.name, phone: form.phone, email: form.email, tags: form.tags, group: form.group || null, notes: form.notes };
+    if (editingCustomer) {
+      await apiFetch(`/customers/${editingCustomer._id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      await apiFetch('/customers', { method: 'POST', body: JSON.stringify(payload) });
+    }
+    setSaving(false);
+    setIsDrawerOpen(false);
     setForm(emptyForm);
     setErrors({});
-    setIsDrawerOpen(false);
+    setEditingCustomer(null);
+    fetchCustomers(search, page);
   };
 
-  const openDrawer = () => {
-    setForm(emptyForm);
+  const handleDelete = async (id: string) => {
+    await apiFetch(`/customers/${id}`, { method: 'DELETE' });
+    setDeleteId(null);
+    const newPage = customers.length === 1 && page > 1 ? page - 1 : page;
+    setPage(newPage);
+    fetchCustomers(search, newPage);
+  };
+
+  const openCreate = () => { setEditingCustomer(null); setForm(emptyForm); setErrors({}); setIsDrawerOpen(true); };
+
+  const openEdit = (c: Customer) => {
+    setEditingCustomer(c);
+    setForm({ name: c.name, phone: c.phone, email: c.email, tags: c.tags, group: c.group?._id ?? '', notes: c.notes, tagInput: '' });
     setErrors({});
     setIsDrawerOpen(true);
+    setOpenMenuId(null);
   };
 
-  const selectedGroup = groups.find(g => g.name === form.group);
+  const selectedGroup = groups.find(g => g._id === form.group);
 
   return (
     <div className="space-y-6">
@@ -116,35 +152,17 @@ const CustomerList = () => {
               className="pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
             />
           </div>
-          <Link
-            href="/customers/groups"
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
-          >
-            <Users className="w-4 h-4" />
-            Customer Groups
+          <Link href="/customers/groups" className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+            <Users className="w-4 h-4" /> Customer Groups
           </Link>
-          <button
-            onClick={openDrawer}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200"
-          >
-            <Plus className="w-4 h-4" />
-            Add New Customer
+          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200">
+            <Plus className="w-4 h-4" /> Add New Customer
           </button>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-3">
-        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
-          <Filter className="w-4 h-4" /> Filter by Tag
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
-          <Download className="w-4 h-4" /> Import CSV
-        </button>
-      </div>
-
       {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-visible">
         <table className="w-full text-left">
           <thead>
             <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
@@ -152,17 +170,21 @@ const CustomerList = () => {
               <th className="px-8 py-4">Phone Number</th>
               <th className="px-8 py-4">Group</th>
               <th className="px-8 py-4">Tags</th>
-              <th className="px-8 py-4">Last Active</th>
+              <th className="px-8 py-4">Added On</th>
               <th className="px-8 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {filtered.map(customer => (
-              <tr key={customer.id} className="group hover:bg-gray-50 transition-colors">
+            {loading ? (
+              <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">Loading...</td></tr>
+            ) : customers.length === 0 ? (
+              <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">No customers found</td></tr>
+            ) : customers.map((customer, idx) => (
+              <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100">
-                      {customer.avatar}
+                      {customer.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{customer.name}</p>
@@ -173,57 +195,106 @@ const CustomerList = () => {
                 <td className="px-8 py-5 text-sm font-medium text-gray-600">{customer.phone}</td>
                 <td className="px-8 py-5">
                   {customer.group ? (
-                    <span className="text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1 rounded-lg">
-                      {customer.group}
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1 rounded-lg w-fit">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: customer.group.color }} />
+                      {customer.group.name}
                     </span>
-                  ) : (
-                    <span className="text-xs text-gray-300">—</span>
-                  )}
+                  ) : <span className="text-xs text-gray-300">—</span>}
                 </td>
                 <td className="px-8 py-5">
                   <div className="flex gap-2 flex-wrap">
                     {customer.tags.map((tag, i) => (
-                      <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${tagColors[tag] ?? 'bg-gray-100 text-gray-500'}`}>
-                        {tag}
-                      </span>
+                      <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${tagColors[tag] ?? 'bg-gray-100 text-gray-500'}`}>{tag}</span>
                     ))}
                   </div>
                 </td>
-                <td className="px-8 py-5 text-sm font-medium text-gray-500">{customer.lastActive}</td>
-                <td className="px-8 py-5 text-right">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
+                <td className="px-8 py-5 text-sm font-medium text-gray-500">
+                  {new Date(customer.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </td>
+                <td className="px-8 py-5 text-right relative">
+                  <button onClick={() => setOpenMenuId(openMenuId === customer._id ? null : customer._id)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
                     <MoreHorizontal className="w-5 h-5" />
                   </button>
+                  <AnimatePresence>
+                    {openMenuId === customer._id && (
+                      <motion.div initial={{ opacity: 0, scale: 0.95, y: -5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                        className={`absolute right-8 bg-white border border-gray-100 rounded-2xl shadow-lg z-10 overflow-hidden w-36 ${
+                          idx >= customers.length - 2 ? 'bottom-full mb-2' : 'top-12'
+                        }`}>
+                        <button onClick={() => openEdit(customer)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                          <Pencil className="w-4 h-4" /> Edit
+                        </button>
+                        <button onClick={() => { setDeleteId(customer._id); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                          <Trash2 className="w-4 h-4" /> Delete
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">No customers found</td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
 
-      {/* Add Customer Drawer */}
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <p className="text-sm text-gray-400">
+            Showing <span className="font-semibold text-gray-700">{(pagination.currentPage - 1) * pagination.limit + 1}</span>–<span className="font-semibold text-gray-700">{Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)}</span> of <span className="font-semibold text-gray-700">{pagination.totalRecords}</span> customers
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              ←
+            </button>
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+              .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === '...' ? (
+                  <span key={`dots-${i}`} className="px-2 text-gray-400 text-sm">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p as number)}
+                    className={`w-9 h-9 text-sm font-bold rounded-xl transition-all ${
+                      page === p
+                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                        : 'bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 shadow-sm'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === pagination.totalPages}
+              className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Drawer */}
       <AnimatePresence>
         {isDrawerOpen && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
-            />
-            <motion.div
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-[70] flex flex-col"
-            >
-              {/* Drawer Header */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" />
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-[70] flex flex-col">
               <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Add New Customer</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Fill in the details below</p>
                 </div>
                 <button onClick={() => setIsDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
@@ -231,98 +302,60 @@ const CustomerList = () => {
                 </button>
               </div>
 
-              {/* Drawer Body */}
               <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
-
-                {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Full Name <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Michael Chen"
-                    value={form.name}
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Name <span className="text-red-400">*</span></label>
+                  <input type="text" placeholder="e.g. Michael Chen" value={form.name}
                     onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); }}
-                    className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.name ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`}
-                  />
+                    className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.name ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
                   {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
                 </div>
 
-                {/* Phone + Email */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Phone <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="+1 234 567 890"
-                      value={form.phone}
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone <span className="text-red-400">*</span></label>
+                    <input type="tel" placeholder="+1 234 567 890" value={form.phone}
                       onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); setErrors(er => ({ ...er, phone: '' })); }}
-                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`}
-                    />
+                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
                     {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
-                    <input
-                      type="email"
-                      placeholder="mike@example.com"
-                      value={form.email}
+                    <input type="email" placeholder="mike@example.com" value={form.email}
                       onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setErrors(er => ({ ...er, email: '' })); }}
-                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.email ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`}
-                    />
+                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.email ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
                     {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
                   </div>
                 </div>
 
-                {/* Customer Group */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer Group</label>
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setGroupDropdownOpen(o => !o)}
-                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none text-left flex items-center justify-between border border-transparent focus:ring-2 focus:ring-emerald-500/20"
-                    >
+                    <button type="button" onClick={() => setGroupDropdownOpen(o => !o)}
+                      className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none text-left flex items-center justify-between border border-transparent">
                       {selectedGroup ? (
                         <span className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedGroup.color }} />
                           <span className="font-medium text-gray-800">{selectedGroup.name}</span>
                         </span>
-                      ) : (
-                        <span className="text-gray-400">Select a group...</span>
-                      )}
+                      ) : <span className="text-gray-400">Select a group...</span>}
                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${groupDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-
                     <AnimatePresence>
                       {groupDropdownOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-lg z-10 overflow-hidden"
-                        >
-                          <button
-                            onClick={() => { setForm(f => ({ ...f, group: '' })); setGroupDropdownOpen(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-400 hover:bg-gray-50 transition-colors"
-                          >
-                            None
-                          </button>
+                        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                          className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-lg z-10 overflow-hidden">
+                          <button onClick={() => { setForm(f => ({ ...f, group: '' })); setGroupDropdownOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-400 hover:bg-gray-50 transition-colors">None</button>
                           {groups.map(g => (
-                            <button
-                              key={g.id}
-                              onClick={() => { setForm(f => ({ ...f, group: g.name })); setGroupDropdownOpen(false); }}
-                              className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
+                            <button key={g._id} onClick={() => { setForm(f => ({ ...f, group: g._id })); setGroupDropdownOpen(false); }}
+                              className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                               <span className="flex items-center gap-3">
                                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
                                 <span className="font-medium">{g.name}</span>
                                 <span className="text-xs text-gray-400">{g.count} customers</span>
                               </span>
-                              {form.group === g.name && <Check className="w-4 h-4 text-emerald-500" />}
+                              {form.group === g._id && <Check className="w-4 h-4 text-emerald-500" />}
                             </button>
                           ))}
                         </motion.div>
@@ -331,58 +364,60 @@ const CustomerList = () => {
                   </div>
                 </div>
 
-                {/* Tags */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tags</label>
                   <div className="flex flex-wrap gap-2 px-3 py-2.5 bg-gray-50 rounded-2xl min-h-[48px] items-center">
                     {form.tags.map(tag => (
                       <span key={tag} className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-lg">
                         {tag}
-                        <button type="button" onClick={() => removeTag(tag)} className="hover:opacity-70 transition-opacity">
-                          <X className="w-3 h-3" />
-                        </button>
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:opacity-70"><X className="w-3 h-3" /></button>
                       </span>
                     ))}
-                    <input
-                      type="text"
-                      placeholder={form.tags.length === 0 ? 'Type a tag and press Enter...' : 'Add more...'}
-                      value={form.tagInput}
-                      onChange={e => setForm(f => ({ ...f, tagInput: e.target.value }))}
-                      onKeyDown={handleTagKeyDown}
-                      onBlur={() => form.tagInput.trim() && addTag(form.tagInput)}
-                      className="flex-1 min-w-[120px] bg-transparent text-sm outline-none text-gray-700 placeholder:text-gray-400"
-                    />
+                    <input type="text" placeholder={form.tags.length === 0 ? 'Type a tag and press Enter...' : 'Add more...'}
+                      value={form.tagInput} onChange={e => setForm(f => ({ ...f, tagInput: e.target.value }))}
+                      onKeyDown={handleTagKeyDown} onBlur={() => form.tagInput.trim() && addTag(form.tagInput)}
+                      className="flex-1 min-w-[120px] bg-transparent text-sm outline-none text-gray-700 placeholder:text-gray-400" />
                   </div>
                   <p className="text-[10px] text-gray-400">Press Enter or comma to add a tag</p>
                 </div>
 
-                {/* Notes */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Internal Notes</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Add some context about this customer..."
-                    value={form.notes}
+                  <textarea rows={3} placeholder="Add some context about this customer..." value={form.notes}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50 border-transparent border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none"
-                  />
+                    className="w-full px-4 py-3 bg-gray-50 border-transparent border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none" />
                 </div>
               </div>
 
-              {/* Drawer Footer */}
               <div className="px-8 py-6 border-t border-gray-100 flex gap-4">
-                <button
-                  onClick={handleSave}
-                  className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
-                >
-                  Save Customer
+                <button onClick={handleSave} disabled={saving}
+                  className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 disabled:opacity-70">
+                  {saving ? 'Saving...' : editingCustomer ? 'Save Changes' : 'Save Customer'}
                 </button>
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all"
-                >
+                <button onClick={() => setIsDrawerOpen(false)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">
                   Cancel
                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirm */}
+      <AnimatePresence>
+        {deleteId && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteId(null)} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2rem] shadow-2xl z-[70] p-8 w-[380px]">
+              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+                <Trash2 className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Customer?</h3>
+              <p className="text-sm text-gray-400 mb-8">This action cannot be undone.</p>
+              <div className="flex gap-4">
+                <button onClick={() => handleDelete(deleteId)} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all">Delete</button>
+                <button onClick={() => setDeleteId(null)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">Cancel</button>
               </div>
             </motion.div>
           </>
