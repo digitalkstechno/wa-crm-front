@@ -8,16 +8,17 @@ import { useAuth } from './AuthProvider';
 export default function SidebarWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
 
   const isLoginPage = pathname === '/login';
 
   useEffect(() => {
-    if (!isLoggedIn && !isLoginPage) {
+    if (!loading && !isLoggedIn && !isLoginPage) {
       router.push('/login');
     }
-  }, [isLoggedIn, isLoginPage, router]);
+  }, [isLoggedIn, isLoginPage, loading, router]);
 
+  if (loading) return null;
   if (isLoginPage) return <>{children}</>;
   if (!isLoggedIn) return null;
 

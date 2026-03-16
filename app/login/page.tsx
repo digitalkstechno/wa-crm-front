@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { MessageSquare, Eye, EyeOff, LogIn } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, isLoggedIn, loading: authLoading } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
+
+  useEffect(() => {
+    if (!authLoading && isLoggedIn) router.replace('/');
+  }, [isLoggedIn, authLoading]);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,12 +25,11 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    const success = login(form.email, form.password);
-    if (success) {
+    const result = await login(form.email, form.password);
+    if (result.success) {
       router.push('/');
     } else {
-      setError('Invalid email or password');
+      setError(result.message || 'Invalid email or password');
     }
     setLoading(false);
   };

@@ -3,9 +3,17 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+type User = {
+  _id: string;
+  fullName: string;
+  email: string;
+};
+
 type AuthContextType = {
   isLoggedIn: boolean;
-  login: (email: string, password: string) => boolean;
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 };
 
@@ -13,29 +21,50 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    setIsLoggedIn(localStorage.getItem('wa_crm_auth') === 'true');
+    const token = localStorage.getItem('wa_crm_token');
+    const storedUser = localStorage.getItem('wa_crm_user');
+    if (token && storedUser) {
+      setIsLoggedIn(true);
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
-  const login = (email: string, password: string) => {
-    if (email === 'admin@wacrm.com' && password === 'admin123') {
-      localStorage.setItem('wa_crm_auth', 'true');
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/staff/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, message: data.message || 'Login failed' };
+
+      localStorage.setItem('wa_crm_token', data.token);
+      localStorage.setItem('wa_crm_user', JSON.stringify(data.data));
       setIsLoggedIn(true);
-      return true;
+      setUser(data.data);
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Network error. Please try again.' };
     }
-    return false;
   };
 
   const logout = () => {
-    localStorage.removeItem('wa_crm_auth');
+    localStorage.removeItem('wa_crm_token');
+    localStorage.removeItem('wa_crm_user');
     setIsLoggedIn(false);
+    setUser(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
