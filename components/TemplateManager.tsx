@@ -1,107 +1,100 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Search, Plus, MoreHorizontal, Smartphone, CheckCircle2,
-  Clock, X, Zap, Phone, MessageSquare, Pencil, Trash2
+  Search, Plus, MoreHorizontal, Smartphone,
+  X, Zap, MessageSquare, Pencil, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-type Button = { label: string; type: 'reply' | 'phone' };
+import { apiFetch } from '@/lib/api';
 
 type Template = {
-  id: number;
+  _id: string;
   name: string;
-  language: string;
-  category: string;
-  status: 'Approved' | 'Pending';
   body: string;
-  buttons: Button[];
+  createdAt: string;
 };
 
-const initialTemplates: Template[] = [
-  {
-    id: 1, name: 'Appointment_Reminder_v1', language: 'English (US)', category: 'Reminder', status: 'Approved',
-    body: 'Hello {{name}}! 👋\n\nThis is a reminder for your appointment on {{date}} at {{time}}.\n\nPlease confirm or contact us to reschedule.',
-    buttons: [{ label: 'Confirm Appointment', type: 'reply' }, { label: 'Call Support', type: 'phone' }],
-  },
-  {
-    id: 2, name: 'Flash_Sale_Promo', language: 'Spanish', category: 'Marketing', status: 'Pending',
-    body: '¡Hola {{name}}! 🎉\n\nTenemos una oferta especial para ti. ¡No te la pierdas!',
-    buttons: [{ label: 'Ver Oferta', type: 'reply' }],
-  },
-];
-
-const emptyForm = { name: '', category: 'Reminder', language: 'English (US)', body: '', buttons: [] as Button[], btnInput: '' };
-
-const VARIABLES = ['{{name}}', '{{date}}', '{{time}}', '{{amount}}'];
-const CATEGORIES = ['Reminder', 'Marketing', 'Authentication', 'Utility'];
-const LANGUAGES = ['English (US)', 'Spanish', 'Hindi', 'French', 'Arabic'];
+const emptyForm = { name: '', body: '' };
 
 export default function TemplateManager() {
-  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [previewId, setPreviewId] = useState<number | null>(initialTemplates[0].id);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
 
-  const filtered = templates.filter(t =>
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.category.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => { fetchTemplates(search, 1); }, []);
 
-  const previewTemplate = previewId ? templates.find(t => t.id === previewId) : null;
+  useEffect(() => {
+    setPage(1);
+    const t = setTimeout(() => fetchTemplates(search, 1), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const openCreate = () => {
-    setEditingTemplate(null);
-    setForm(emptyForm);
-    setIsDrawerOpen(true);
+  const fetchTemplates = async (q = '', p = 1) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (q) params.set('search', q);
+    params.set('page', String(p));
+    params.set('limit', '10');
+    const data = await apiFetch(`/templates?${params.toString()}`);
+    const list: Template[] = data.data ?? [];
+    setTemplates(list);
+    if (data.pagination) setPagination(data.pagination);
+    if (!previewId && list.length > 0) setPreviewId(list[0]._id);
+    setLoading(false);
   };
+
+  const previewTemplate = templates.find(t => t._id === previewId) ?? null;
+
+  const openCreate = () => { setEditingTemplate(null); setForm(emptyForm); setIsDrawerOpen(true); };
 
   const openEdit = (t: Template) => {
     setEditingTemplate(t);
-    setForm({ name: t.name, category: t.category, language: t.language, body: t.body, buttons: t.buttons, btnInput: '' });
+    setForm({ name: t.name, body: t.body });
     setIsDrawerOpen(true);
     setOpenMenuId(null);
   };
 
-  const insertVariable = (v: string) => setForm(f => ({ ...f, body: f.body + v }));
-
-  const addButton = () => {
-    const label = form.btnInput.trim();
-    if (!label || form.buttons.length >= 3) return;
-    setForm(f => ({ ...f, buttons: [...f.buttons, { label, type: 'reply' }], btnInput: '' }));
-  };
-
-  const removeButton = (i: number) => setForm(f => ({ ...f, buttons: f.buttons.filter((_, idx) => idx !== i) }));
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.body.trim()) return;
+    setSaving(true);
     if (editingTemplate) {
-      setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? { ...t, ...form } : t));
+      await apiFetch(`/templates/${editingTemplate._id}`, { method: 'PUT', body: JSON.stringify(form) });
     } else {
-      const newT: Template = { id: Date.now(), name: form.name, category: form.category, language: form.language, body: form.body, buttons: form.buttons, status: 'Pending' };
-      setTemplates(prev => [...prev, newT]);
-      setPreviewId(newT.id);
+      const data = await apiFetch('/templates', { method: 'POST', body: JSON.stringify(form) });
+      if (data.data?._id) setPreviewId(data.data._id);
     }
+    setSaving(false);
     setIsDrawerOpen(false);
+    fetchTemplates(search, page);
   };
 
-  const handleDelete = (id: number) => {
-    setTemplates(prev => prev.filter(t => t.id !== id));
-    if (previewId === id) setPreviewId(templates.find(t => t.id !== id)?.id ?? null);
+  const handleDelete = async (id: string) => {
+    await apiFetch(`/templates/${id}`, { method: 'DELETE' });
+    if (previewId === id) setPreviewId(templates.find(t => t._id !== id)?._id ?? null);
     setDeleteId(null);
+    const newPage = templates.length === 1 && page > 1 ? page - 1 : page;
+    setPage(newPage);
+    fetchTemplates(search, newPage);
   };
 
-  const handleMenuOpen = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
+  const handleMenuOpen = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 });
     setOpenMenuId(openMenuId === id ? null : id);
   };
+
+  const handlePageChange = (p: number) => { setPage(p); fetchTemplates(search, p); };
 
   return (
     <div className="space-y-6">
@@ -127,7 +120,7 @@ export default function TemplateManager() {
         <div className="lg:col-span-2 bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-visible">
           <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between">
             <h3 className="text-base font-bold text-gray-900">All Templates</h3>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{templates.length} total</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{pagination.totalRecords} total</span>
           </div>
           <table className="w-full text-left">
             <thead>
@@ -138,20 +131,21 @@ export default function TemplateManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={3} className="px-8 py-16 text-center text-sm text-gray-400">Loading...</td></tr>
+              ) : templates.length === 0 ? (
                 <tr><td colSpan={3} className="px-8 py-16 text-center text-sm text-gray-400">No templates found</td></tr>
-              ) : filtered.map(t => (
-                <tr key={t.id}
-                  onClick={() => setPreviewId(t.id)}
-                  className={`cursor-pointer transition-colors ${previewId === t.id ? 'bg-emerald-50/50' : 'hover:bg-gray-50'}`}>
+              ) : templates.map(t => (
+                <tr key={t._id} onClick={() => setPreviewId(t._id)}
+                  className={`cursor-pointer transition-colors ${previewId === t._id ? 'bg-emerald-50/50' : 'hover:bg-gray-50'}`}>
                   <td className="px-8 py-4 w-48">
                     <p className="text-sm font-semibold text-gray-900">{t.name}</p>
                   </td>
                   <td className="px-8 py-4">
                     <p className="text-sm text-gray-500 truncate max-w-xs">{t.body}</p>
                   </td>
-                  <td className="px-8 py-4 text-right relative">
-                    <button onClick={e => { e.stopPropagation(); handleMenuOpen(e, t.id); }}
+                  <td className="px-8 py-4 text-right">
+                    <button onClick={e => { e.stopPropagation(); handleMenuOpen(e, t._id); }}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
@@ -160,6 +154,36 @@ export default function TemplateManager() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="px-8 py-5 border-t border-gray-50 flex items-center justify-between">
+              <p className="text-sm text-gray-400">
+                Showing <span className="font-semibold text-gray-700">{(pagination.currentPage - 1) * pagination.limit + 1}</span>–<span className="font-semibold text-gray-700">{Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)}</span> of <span className="font-semibold text-gray-700">{pagination.totalRecords}</span>
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => handlePageChange(page - 1)} disabled={page === 1}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">←</button>
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) => p === '...' ? (
+                    <span key={`d${i}`} className="px-2 text-gray-400 text-sm">...</span>
+                  ) : (
+                    <button key={p} onClick={() => handlePageChange(p as number)}
+                      className={`w-9 h-9 text-sm font-bold rounded-xl transition-all ${page === p ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200' : 'bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 shadow-sm'}`}>
+                      {p}
+                    </button>
+                  ))}
+                <button onClick={() => handlePageChange(page + 1)} disabled={page === pagination.totalPages}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-100 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">→</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Live Preview */}
@@ -168,7 +192,6 @@ export default function TemplateManager() {
             <Smartphone className="w-5 h-5 text-gray-400" />
             <h3 className="text-base font-bold text-gray-900">Live Preview</h3>
           </div>
-
           {previewTemplate ? (
             <>
               <div className="relative mx-auto w-full max-w-[240px] aspect-[9/18] bg-gray-900 rounded-[2.5rem] border-[5px] border-gray-800 shadow-2xl overflow-hidden">
@@ -189,21 +212,9 @@ export default function TemplateManager() {
                       <p className="text-[8px] text-gray-400 text-right mt-1">9:41 AM</p>
                     </div>
                   </div>
-                  {previewTemplate.buttons.length > 0 && (
-                    <div className="px-3 pb-3 space-y-1.5">
-                      {previewTemplate.buttons.map((btn, i) => (
-                        <div key={i} className="bg-white py-1.5 rounded-xl text-center shadow-sm flex items-center justify-center gap-1.5">
-                          {btn.type === 'phone' ? <Phone className="w-3 h-3 text-blue-500" /> : null}
-                          <span className="text-[9px] font-bold text-blue-500">{btn.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400 text-center mt-4 leading-relaxed">
-                Appearance may vary by device
-              </p>
+              <p className="text-[10px] text-gray-400 text-center mt-4">Appearance may vary by device</p>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-300">
@@ -214,18 +225,14 @@ export default function TemplateManager() {
         </div>
       </div>
 
-      {/* Fixed Dropdown Menu */}
+      {/* Fixed Dropdown */}
       <AnimatePresence>
         {openMenuId !== null && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-            transition={{ duration: 0.15 }}
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -4 }} transition={{ duration: 0.15 }}
             style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
-            className="bg-white border border-gray-100 rounded-2xl shadow-xl z-[100] overflow-hidden w-36"
-          >
-            <button onClick={() => { const t = templates.find(t => t.id === openMenuId); if (t) openEdit(t); }}
+            className="bg-white border border-gray-100 rounded-2xl shadow-xl z-[100] overflow-hidden w-36">
+            <button onClick={() => { const t = templates.find(t => t._id === openMenuId); if (t) openEdit(t); }}
               className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
               <Pencil className="w-4 h-4" /> Edit
             </button>
@@ -246,7 +253,6 @@ export default function TemplateManager() {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-[70] flex flex-col">
-
               <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-50 rounded-xl">
@@ -260,15 +266,12 @@ export default function TemplateManager() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
-                {/* Name */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Template Name <span className="text-red-400">*</span></label>
                   <input type="text" placeholder="e.g. Welcome_Message" value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20" />
                 </div>
-
-                {/* Body */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Message Body <span className="text-red-400">*</span></label>
                   <textarea rows={8} placeholder="Hello! 👋 ..." value={form.body}
@@ -279,9 +282,9 @@ export default function TemplateManager() {
               </div>
 
               <div className="px-8 py-6 border-t border-gray-100 flex gap-4">
-                <button onClick={handleSave}
-                  className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
-                  {editingTemplate ? 'Save Changes' : 'Submit for Approval'}
+                <button onClick={handleSave} disabled={saving}
+                  className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 disabled:opacity-70">
+                  {saving ? 'Saving...' : editingTemplate ? 'Save Changes' : 'Create Template'}
                 </button>
                 <button onClick={() => setIsDrawerOpen(false)}
                   className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">
