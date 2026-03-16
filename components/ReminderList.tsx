@@ -5,7 +5,7 @@ import {
   Bell, Plus, Search, Filter, Calendar, Clock,
   User, MessageSquare, MoreVertical, CheckCircle2,
   AlertCircle, X, Phone, Users, Hash,
-  Check, ChevronRight, FileText
+  Check, ChevronRight, FileText, Repeat
 } from 'lucide-react';
 
 type ReminderStatus = 'Scheduled' | 'Pending' | 'Sent' | 'Failed';
@@ -93,6 +93,16 @@ const ReminderList = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [schedDate, setSchedDate] = useState('');
   const [schedTime, setSchedTime] = useState('');
+  // Repeat
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
+  const [repeatFreq, setRepeatFreq] = useState<'day'|'week'|'month'|'year'>('week');
+  const [repeatInterval, setRepeatInterval] = useState(1);
+  const [repeatDays, setRepeatDays] = useState<number[]>([]);
+  const [repeatMonthDay, setRepeatMonthDay] = useState(1);
+  const [repeatStartDate, setRepeatStartDate] = useState('');
+  const [repeatEnds, setRepeatEnds] = useState<'never'|'on'|'after'>('never');
+  const [repeatEndDate, setRepeatEndDate] = useState('');
+  const [repeatAfterCount, setRepeatAfterCount] = useState(1);
 
   const resetModal = () => {
     setShowModal(false);
@@ -104,6 +114,11 @@ const ReminderList = () => {
     setSelectedGroups([]);
     setSelectedTemplate(null);
     setSchedDate(''); setSchedTime('');
+    setRepeatEnabled(false);
+    setRepeatFreq('week'); setRepeatInterval(1);
+    setRepeatDays([]); setRepeatMonthDay(1);
+    setRepeatStartDate('');
+    setRepeatEnds('never'); setRepeatEndDate(''); setRepeatAfterCount(1);
   };
 
   const toggleCustomer = (c: {id:string;name:string;phone:string}) => {
@@ -495,23 +510,19 @@ const ReminderList = () => {
 
             {/* Step 3 — Template & Schedule */}
             {step === 3 && (
-              <div className="px-8 py-6 space-y-5">
+              <div className="px-8 py-6 space-y-5 max-h-[70vh] overflow-y-auto">
+
+                {/* Template */}
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Template</label>
-                  <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {mockTemplates.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelectedTemplate(t.id)}
+                      <button key={t.id} onClick={() => setSelectedTemplate(t.id)}
                         className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border-2 text-left transition-all ${
-                          selectedTemplate === t.id
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                          selectedTemplate === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                         }`}
                       >
-                        <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${
-                          selectedTemplate === t.id ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${ selectedTemplate === t.id ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400' }`}>
                           <FileText className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -524,6 +535,7 @@ const ReminderList = () => {
                   </div>
                 </div>
 
+                {/* Date & Time */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Date</label>
@@ -542,6 +554,128 @@ const ReminderList = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Repeat Toggle */}
+                <div className="border border-gray-100 rounded-2xl overflow-hidden">
+                  <button
+                    onClick={() => setRepeatEnabled(p => !p)}
+                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1.5 rounded-lg ${ repeatEnabled ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400' }`}>
+                        <Repeat className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-bold text-gray-800">Repeat</span>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full transition-colors relative ${ repeatEnabled ? 'bg-emerald-500' : 'bg-gray-200' }`}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${ repeatEnabled ? 'left-5' : 'left-0.5' }`} />
+                    </div>
+                  </button>
+
+                  {repeatEnabled && (
+                    <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+
+                      {/* Frequency pills */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Frequency</label>
+                        <div className="flex gap-2">
+                          {(['day','week','month','year'] as const).map(f => (
+                            <button key={f} onClick={() => { setRepeatFreq(f); setRepeatDays([]); }}
+                              className={`flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all ${
+                                repeatFreq === f ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
+                            >{f}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Every N */}
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider shrink-0">Every</label>
+                        <input type="number" min={1} max={99} value={repeatInterval}
+                          onChange={e => setRepeatInterval(Math.max(1, Number(e.target.value)))}
+                          className="w-16 px-3 py-2 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        />
+                        <span className="text-sm text-gray-500">{repeatFreq}{repeatInterval > 1 ? 's' : ''}</span>
+                      </div>
+
+                      {/* Week — day picker */}
+                      {repeatFreq === 'week' && (
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">On days</label>
+                          <div className="flex gap-1.5">
+                            {['S','M','T','W','T','F','S'].map((d, i) => (
+                              <button key={i} onClick={() => setRepeatDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}
+                                className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
+                                  repeatDays.includes(i) ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                }`}
+                              >{d}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Month — day of month */}
+                      {repeatFreq === 'month' && (
+                        <div className="flex items-center gap-3">
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider shrink-0">On day</label>
+                          <input type="number" min={1} max={31} value={repeatMonthDay}
+                            onChange={e => setRepeatMonthDay(Math.min(31, Math.max(1, Number(e.target.value))))}
+                            className="w-16 px-3 py-2 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          />
+                          <span className="text-sm text-gray-500">of each month</span>
+                        </div>
+                      )}
+
+                      {/* Start date */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Starts on</label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <input type="date" value={repeatStartDate} onChange={e => setRepeatStartDate(e.target.value)}
+                            className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400" />
+                        </div>
+                      </div>
+
+                      {/* Ends */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Ends</label>
+                        <div className="space-y-2">
+                          {(['never','on','after'] as const).map(opt => (
+                            <label key={opt} className="flex items-center gap-3 cursor-pointer">
+                              <div onClick={() => setRepeatEnds(opt)}
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                  repeatEnds === opt ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
+                                }`}
+                              >
+                                {repeatEnds === opt && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                              </div>
+                              <span className="text-sm font-medium text-gray-700 capitalize w-12">{opt}</span>
+                              {opt === 'on' && repeatEnds === 'on' && (
+                                <div className="relative flex-1">
+                                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                                  <input type="date" value={repeatEndDate} onChange={e => setRepeatEndDate(e.target.value)}
+                                    className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                </div>
+                              )}
+                              {opt === 'after' && repeatEnds === 'after' && (
+                                <div className="flex items-center gap-2">
+                                  <input type="number" min={1} max={999} value={repeatAfterCount}
+                                    onChange={e => setRepeatAfterCount(Math.max(1, Number(e.target.value)))}
+                                    className="w-16 px-3 py-1.5 border border-gray-200 rounded-xl text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                  />
+                                  <span className="text-sm text-gray-500">occurrences</span>
+                                </div>
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
 
