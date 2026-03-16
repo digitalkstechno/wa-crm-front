@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-  Search, Plus, Filter, Download, MoreHorizontal, X, Users, ChevronDown, Check
+  Search, Plus, Filter, Download, MoreHorizontal, X, Users, ChevronDown, Check, Tag
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,15 +20,13 @@ type Customer = {
   avatar: string;
 };
 
-const TAGS = ['VIP', 'Lead', 'Inactive', 'New'];
-
 const initialCustomers: Customer[] = [
   { id: 1, name: 'John Doe', phone: '+1 234 567 890', email: 'john@example.com', tags: ['VIP'], group: 'VIP Clients', notes: '', lastActive: '2023-12-01', avatar: 'JD' },
   { id: 2, name: 'Alice Smith', phone: '+1 987 654 321', email: 'alice@example.com', tags: ['Lead'], group: 'Leads', notes: '', lastActive: '2023-11-28', avatar: 'AS' },
   { id: 3, name: 'Robert Fox', phone: '+1 555 012 345', email: 'robert@example.com', tags: ['Lead'], group: 'Leads', notes: '', lastActive: 'Nov 25, 2023', avatar: 'RF' },
 ];
 
-const emptyForm = { name: '', phone: '', email: '', tags: [] as string[], group: '', notes: '' };
+const emptyForm = { name: '', phone: '', email: '', tags: [] as string[], group: '', notes: '', tagInput: '' };
 
 const tagColors: Record<string, string> = {
   VIP: 'bg-emerald-50 text-emerald-600',
@@ -45,6 +43,26 @@ const CustomerList = () => {
   const [errors, setErrors] = useState<Partial<typeof emptyForm>>({});
   const [search, setSearch] = useState('');
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
+
+  const addTag = (val: string) => {
+    const tag = val.trim();
+    if (tag && !form.tags.includes(tag)) {
+      setForm(f => ({ ...f, tags: [...f.tags, tag], tagInput: '' }));
+    } else {
+      setForm(f => ({ ...f, tagInput: '' }));
+    }
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(form.tagInput);
+    } else if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0) {
+      setForm(f => ({ ...f, tags: f.tags.slice(0, -1) }));
+    }
+  };
+
+  const removeTag = (tag: string) => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }));
 
   const filtered = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,13 +90,6 @@ const CustomerList = () => {
     setForm(emptyForm);
     setErrors({});
     setIsDrawerOpen(false);
-  };
-
-  const toggleTag = (tag: string) => {
-    setForm(f => ({
-      ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag],
-    }));
   };
 
   const openDrawer = () => {
@@ -321,24 +332,28 @@ const CustomerList = () => {
                 </div>
 
                 {/* Tags */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {TAGS.map(tag => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-                          form.tags.includes(tag)
-                            ? 'bg-emerald-500 text-white border-emerald-500'
-                            : 'bg-white border-gray-100 text-gray-600 hover:border-emerald-400 hover:text-emerald-600'
-                        }`}
-                      >
+                  <div className="flex flex-wrap gap-2 px-3 py-2.5 bg-gray-50 rounded-2xl min-h-[48px] items-center">
+                    {form.tags.map(tag => (
+                      <span key={tag} className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-lg">
                         {tag}
-                      </button>
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:opacity-70 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
                     ))}
+                    <input
+                      type="text"
+                      placeholder={form.tags.length === 0 ? 'Type a tag and press Enter...' : 'Add more...'}
+                      value={form.tagInput}
+                      onChange={e => setForm(f => ({ ...f, tagInput: e.target.value }))}
+                      onKeyDown={handleTagKeyDown}
+                      onBlur={() => form.tagInput.trim() && addTag(form.tagInput)}
+                      className="flex-1 min-w-[120px] bg-transparent text-sm outline-none text-gray-700 placeholder:text-gray-400"
+                    />
                   </div>
+                  <p className="text-[10px] text-gray-400">Press Enter or comma to add a tag</p>
                 </div>
 
                 {/* Notes */}
