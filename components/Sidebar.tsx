@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useAuth } from './AuthProvider';
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,6 +20,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
+  const { logout } = useAuth();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers', label: 'Customers', icon: Users },
@@ -74,7 +76,7 @@ const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
             <p className="text-sm font-semibold text-gray-900 truncate">Alex Rivera</p>
             <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Admin</p>
           </div>
-          <button className="text-gray-400 hover:text-red-500 transition-colors">
+          <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors">
             <LogOut className="w-4 h-4" />
           </button>
         </div>

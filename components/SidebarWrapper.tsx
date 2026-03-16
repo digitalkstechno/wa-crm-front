@@ -1,11 +1,27 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
+import { useAuth } from './AuthProvider';
 
 export default function SidebarWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const activeTab = pathname.replace('/', '') || 'dashboard';
+  const router = useRouter();
+  const { isLoggedIn } = useAuth();
+
+  const isLoginPage = pathname === '/login';
+
+  useEffect(() => {
+    if (!isLoggedIn && !isLoginPage) {
+      router.push('/login');
+    }
+  }, [isLoggedIn, isLoginPage, router]);
+
+  if (isLoginPage) return <>{children}</>;
+  if (!isLoggedIn) return null;
+
+  const activeTab = pathname.replace('/', '').split('/')[0] || 'dashboard';
 
   return (
     <main className="min-h-screen bg-[#f8fafc]">
