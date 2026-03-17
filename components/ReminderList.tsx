@@ -248,6 +248,12 @@ const ReminderList = () => {
     }
   };
 
+  const tabCount: Record<Tab, number> = {
+    upcoming: stats.pending,
+    completed: stats.sent,
+    failed: stats.failed,
+  };
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'completed', label: 'Completed' },
@@ -335,7 +341,7 @@ const ReminderList = () => {
                 <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                   activeTab === tab.key ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'
                 }`}>
-                  {reminders.filter(tabFilter[tab.key]).length}
+                  {tabCount[tab.key]}
                 </span>
               </button>
             ))}

@@ -20,13 +20,12 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'templates', label: 'Templates', icon: FileText },
-    { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -65,16 +64,14 @@ const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
 
       <div className="p-4 border-t border-gray-100">
         <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 overflow-hidden border-2 border-white shadow-sm">
-            <img 
-              src="https://picsum.photos/seed/alex/100/100" 
-              alt="User Avatar" 
-              className="w-full h-full object-cover"
-            />
+          <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-white shadow-sm shrink-0">
+            <span className="text-white text-xs font-bold">
+              {user?.fullName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">Alex Rivera</p>
-            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Admin</p>
+            <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'User'}</p>
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{user?.email || ''}</p>
           </div>
           <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors">
             <LogOut className="w-4 h-4" />
