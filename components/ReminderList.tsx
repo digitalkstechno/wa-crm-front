@@ -15,14 +15,28 @@ type ReminderStatus = 'Scheduled' | 'Pending' | 'Sent' | 'Failed';
 interface Reminder {
   _id: string;
   customerName?: string;
-  customer?: { name: string };
+  customer?: { _id: string; name: string; phone?: string };
+  customers?: { _id: string; name: string; phone?: string }[];
+  groups?: { _id: string; name: string }[];
+  recipientType?: 'new' | 'customers' | 'groups';
   title: string;
   scheduledAt: string;
   status: ReminderStatus;
   type: string;
-  // Support for new number name/phone
+  template?: { _id: string; name: string } | string;
   newName?: string;
   newPhone?: string;
+  repeat?: {
+    enabled: boolean;
+    frequency?: 'day' | 'week' | 'month' | 'year';
+    interval?: number;
+    days?: number[];
+    monthDay?: number;
+    startDate?: string;
+    ends?: 'never' | 'on' | 'after';
+    endDate?: string;
+    afterCount?: number;
+  };
 }
 
 // --- Modal UI state and data fetching ---
@@ -63,6 +77,7 @@ const ReminderList = () => {
   const [showModal, setShowModal] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Modal wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -72,6 +87,7 @@ const ReminderList = () => {
   const [newPhone, setNewPhone] = useState('');
   // Customers
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [customerSearch, setCustomerSearch] = useState<Record<string, string>>({});
   const [selectedCustomers, setSelectedCustomers] = useState<{id:string;name:string;phone:string}[]>([]);
   // Groups
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -93,12 +109,14 @@ const ReminderList = () => {
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<Group[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [stats, setStats] = useState({ sent: 0, pending: 0, failed: 0 });
 
   const fetchReminders = async () => {
     try {
       setLoading(true);
       const data = await apiFetch(`/reminders?filterType=${activeTab}`);
       setReminders(data.data || []);
+      if (data.stats) setStats(data.stats);
     } catch (err) {
       console.error('Failed to fetch reminders:', err);
     } finally {
@@ -109,7 +127,7 @@ const ReminderList = () => {
   const fetchDependencies = async () => {
     try {
       const [gData, tData] = await Promise.all([
-        apiFetch('/customer-groups'),
+        apiFetch('/customer-groups/all'),
         apiFetch('/templates')
       ]);
       setGroups(gData.data || []);
@@ -119,16 +137,23 @@ const ReminderList = () => {
     }
   };
 
+  // Fetch reminders when tab changes
   useEffect(() => {
     fetchReminders();
-    fetchDependencies();
   }, [activeTab]);
+
+  // Fetch dependencies only once on mount
+  useEffect(() => {
+    fetchDependencies();
+  }, []);
 
   const resetModal = () => {
     setShowModal(false);
+    setEditingId(null);
     setStep(1);
     setRecipientType(null);
     setNewName(''); setNewPhone('');
+    setCustomerSearch({});
     setExpandedGroup(null);
     setSelectedCustomers([]);
     setSelectedGroups([]);
@@ -169,10 +194,48 @@ const ReminderList = () => {
              r.title.toLowerCase().includes(search.toLowerCase());
     });
 
-  const stats = {
-    sent: reminders.filter(r => r.status === 'Sent').length,
-    pending: reminders.filter(r => r.status === 'Pending' || r.status === 'Scheduled').length,
-    failed: reminders.filter(r => r.status === 'Failed').length,
+
+
+  const handleEdit = async (reminder: Reminder) => {
+    setOpenMenu(null);
+    try {
+      // Fetch full reminder details
+      const res = await apiFetch(`/reminders/${reminder._id}`);
+      const r = res.data;
+
+      setEditingId(r._id);
+      setRecipientType(r.recipientType || 'new');
+      setNewName(r.newName || '');
+      setNewPhone(r.newPhone || '');
+      setSelectedCustomers(
+        r.customers?.map((c: any) => ({ id: c._id, name: c.name, phone: c.phone || '' })) || []
+      );
+      setSelectedGroups(r.groups?.map((g: any) => g._id) || []);
+
+      const tplId = typeof r.template === 'object' ? r.template?._id : r.template;
+      setSelectedTemplate(tplId || null);
+
+      const d = new Date(r.scheduledAt);
+      setSchedDate(d.toISOString().split('T')[0]);
+      setSchedTime(d.toTimeString().slice(0, 5));
+
+      if (r.repeat) {
+        setRepeatEnabled(r.repeat.enabled || false);
+        setRepeatFreq(r.repeat.frequency || 'week');
+        setRepeatInterval(r.repeat.interval || 1);
+        setRepeatDays(r.repeat.days || []);
+        setRepeatMonthDay(r.repeat.monthDay || 1);
+        setRepeatStartDate(r.repeat.startDate ? new Date(r.repeat.startDate).toISOString().split('T')[0] : '');
+        setRepeatEnds(r.repeat.ends || 'never');
+        setRepeatEndDate(r.repeat.endDate ? new Date(r.repeat.endDate).toISOString().split('T')[0] : '');
+        setRepeatAfterCount(r.repeat.afterCount || 1);
+      }
+
+      setStep(1);
+      setShowModal(true);
+    } catch (err) {
+      console.error('Failed to load reminder for editing:', err);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -255,7 +318,7 @@ const ReminderList = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-visible">
         <div className="px-8 pt-6 pb-0 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-1">
             {tabs.map(tab => (
@@ -291,7 +354,17 @@ const ReminderList = () => {
           <div className="divide-y divide-gray-50">
             {filtered.map((reminder) => {
               const s = statusConfig[reminder.status] || statusConfig.Scheduled;
-              const customerName = reminder.customer?.name || reminder.newName || 'Unknown';
+              const customerName = (() => {
+                if (reminder.recipientType === 'customers' && reminder.customers && reminder.customers.length > 0) {
+                  const names = reminder.customers.map(c => c.name);
+                  return names.length <= 2 ? names.join(', ') : `${names[0]}, ${names[1]} +${names.length - 2}`;
+                }
+                if (reminder.recipientType === 'groups' && reminder.groups && reminder.groups.length > 0) {
+                  const names = reminder.groups.map(g => g.name);
+                  return names.length <= 2 ? names.join(', ') : `${names[0]}, ${names[1]} +${names.length - 2}`;
+                }
+                return reminder.customer?.name || reminder.newName || reminder.title;
+              })();
               const dateObj = new Date(reminder.scheduledAt);
               return (
                 <div
@@ -341,7 +414,7 @@ const ReminderList = () => {
                       </button>
                       {openMenu === reminder._id && (
                         <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
-                          <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">Edit</button>
+                          <button onClick={() => handleEdit(reminder)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">Edit</button>
                           <button
                             onClick={() => handleDelete(reminder._id)}
                             className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500 font-medium"
@@ -367,7 +440,7 @@ const ReminderList = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-gray-100">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Create Reminder</h3>
+                <h3 className="text-lg font-bold text-gray-900">{editingId ? 'Edit Reminder' : 'Create Reminder'}</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {step === 1 && 'Step 1 of 3 — Choose recipient type'}
                   {step === 2 && 'Step 2 of 3 — Select recipients'}
@@ -451,11 +524,17 @@ const ReminderList = () => {
 
                 {/* Customers — group accordion */}
                 {recipientType === 'customers' && (
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  <div className="space-y-2">
                     {selectedCustomers.length > 0 && (
                       <p className="text-xs font-bold text-emerald-600 mb-3">{selectedCustomers.length} customer{selectedCustomers.length > 1 ? 's' : ''} selected</p>
                     )}
-                    {groups.map(group => (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {groups.map(group => {
+                      const groupSearch = (customerSearch[group._id] || '').toLowerCase();
+                      const filteredMembers = groupSearch
+                        ? group.members?.filter(m => m.name.toLowerCase().includes(groupSearch) || m.phone.toLowerCase().includes(groupSearch))
+                        : group.members;
+                      return (
                       <div key={group._id} className="border border-gray-100 rounded-2xl overflow-hidden">
                         <button
                           onClick={() => setExpandedGroup(expandedGroup === group._id ? null : group._id)}
@@ -469,8 +548,20 @@ const ReminderList = () => {
                           <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${ expandedGroup === group._id ? 'rotate-90' : '' }`} />
                         </button>
                         {expandedGroup === group._id && (
-                          <div className="border-t border-gray-50 divide-y divide-gray-50">
-                            {group.members?.map(member => {
+                          <div className="border-t border-gray-50">
+                            {/* Search inside group */}
+                            <div className="relative px-3 py-2 bg-gray-50/50">
+                              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                              <input
+                                type="text"
+                                placeholder="Search customers..."
+                                value={customerSearch[group._id] || ''}
+                                onChange={e => setCustomerSearch(prev => ({ ...prev, [group._id]: e.target.value }))}
+                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 bg-white"
+                              />
+                            </div>
+                            <div className="divide-y divide-gray-50">
+                            {filteredMembers && filteredMembers.length > 0 ? filteredMembers.map(member => {
                               const isSelected = !!selectedCustomers.find(x => x.id === member._id);
                               return (
                                 <button
@@ -491,11 +582,16 @@ const ReminderList = () => {
                                   <span className="text-xs text-gray-400">{member.phone}</span>
                                 </button>
                               );
-                            })}
+                            }) : (
+                              <p className="text-xs text-gray-400 text-center py-3 italic">No customers found</p>
+                            )}
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
+                    </div>
                   </div>
                 )}
 
@@ -787,11 +883,15 @@ const ReminderList = () => {
                         }
                       };
 
-                      await apiFetch('/reminders', { method: 'POST', body: JSON.stringify(payload) });
+                      if (editingId) {
+                        await apiFetch(`/reminders/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                      } else {
+                        await apiFetch('/reminders', { method: 'POST', body: JSON.stringify(payload) });
+                      }
                       fetchReminders();
                       resetModal();
                     } catch (err) {
-                      console.error('Failed to create reminder:', err);
+                      console.error('Failed to save reminder:', err);
                     }
                   };
                   handleFinalSubmit();
@@ -799,7 +899,7 @@ const ReminderList = () => {
                 disabled={step === 1 ? !step1Valid : step === 2 ? !step2Valid : !step3Valid}
                 className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {step === 3 ? 'Create Reminder' : 'Next'}
+                {step === 3 ? (editingId ? 'Save Changes' : 'Create Reminder') : 'Next'}
               </button>
             </div>
           </div>
