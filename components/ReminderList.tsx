@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Bell, Plus, Search, Filter, Calendar, Clock,
+  Bell, Plus, Search, Calendar, Clock,
   User, MessageSquare, MoreVertical, CheckCircle2,
   AlertCircle, X, Phone, Users, Hash,
   Check, ChevronRight, FileText, Repeat
@@ -110,6 +110,7 @@ const ReminderList = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [stats, setStats] = useState({ sent: 0, pending: 0, failed: 0 });
+  const [filterDate, setFilterDate] = useState<'today' | 'week' | 'month' | ''>('');
 
   const fetchReminders = async () => {
     try {
@@ -187,12 +188,26 @@ const ReminderList = () => {
   })();
   const step3Valid = selectedTemplate !== null && schedDate !== '' && schedTime !== '';
 
-  const filtered = reminders
-    .filter(r => {
-      const cname = r.customer?.name || r.newName || 'Unknown';
-      return cname.toLowerCase().includes(search.toLowerCase()) ||
-             r.title.toLowerCase().includes(search.toLowerCase());
-    });
+  const filtered = reminders.filter(r => {
+    const cname = r.customer?.name || r.newName || 'Unknown';
+    const matchSearch = cname.toLowerCase().includes(search.toLowerCase()) ||
+      r.title.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+    if (filterDate) {
+      const d = new Date(r.scheduledAt);
+      const now = new Date();
+      if (filterDate === 'today') {
+        return d.toDateString() === now.toDateString();
+      } else if (filterDate === 'week') {
+        const weekAhead = new Date(now); weekAhead.setDate(now.getDate() + 7);
+        return d >= now && d <= weekAhead;
+      } else if (filterDate === 'month') {
+        const monthAhead = new Date(now); monthAhead.setMonth(now.getMonth() + 1);
+        return d >= now && d <= monthAhead;
+      }
+    }
+    return true;
+  });
 
 
 
@@ -352,9 +367,20 @@ const ReminderList = () => {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 mb-3">
-            <Filter className="w-3 h-3" /> Filter
-          </button>
+          <div className="relative">
+            <select
+              value={filterDate}
+              onChange={e => setFilterDate(e.target.value as typeof filterDate)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all outline-none cursor-pointer mb-3 ${
+                filterDate ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-gray-50 border-gray-100 text-gray-500'
+              }`}
+            >
+              <option value="">All Dates</option>
+              <option value="today">Today</option>
+              <option value="week">Next 7 Days</option>
+              <option value="month">Next 30 Days</option>
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (

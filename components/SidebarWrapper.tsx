@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import { useAuth } from './AuthProvider';
@@ -9,6 +9,7 @@ export default function SidebarWrapper({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const router = useRouter();
   const { isLoggedIn, loading } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   const isLoginPage = pathname === '/login';
 
@@ -26,8 +27,8 @@ export default function SidebarWrapper({ children }: { children: React.ReactNode
 
   return (
     <main className="min-h-screen bg-[#f8fafc]">
-      <Sidebar activeTab={activeTab} setActiveTab={() => {}} />
-      <div className="pl-64 min-h-screen">
+      <Sidebar activeTab={activeTab} setActiveTab={() => {}} collapsed={collapsed} setCollapsed={setCollapsed} />
+      <div className={`${collapsed ? 'pl-[72px]' : 'pl-64'} min-h-screen transition-all duration-300`}>
         <div className="max-w-7xl mx-auto p-8 lg:p-12">
           {children}
         </div>
