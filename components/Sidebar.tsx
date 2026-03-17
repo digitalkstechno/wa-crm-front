@@ -62,21 +62,25 @@ const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-100">
-        <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-white shadow-sm shrink-0">
+      <div className="p-4 border-t border-gray-100 space-y-2">
+        <div className="bg-gray-50 rounded-2xl p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">
               {user?.fullName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'User'}</p>
-            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{user?.email || ''}</p>
+            <p className="text-[10px] font-medium text-gray-400 truncate">{user?.email || ''}</p>
           </div>
-          <button onClick={logout} className="text-gray-400 hover:text-red-500 transition-colors">
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-red-100 bg-red-50 text-red-500 text-sm font-bold hover:bg-red-500 hover:text-white transition-all"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
       </div>
     </div>
   );
