@@ -38,6 +38,16 @@ const CustomerList = () => {
   const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
@@ -179,7 +189,7 @@ const CustomerList = () => {
               <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">Loading...</td></tr>
             ) : customers.length === 0 ? (
               <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">No customers found</td></tr>
-            ) : customers.map((customer, idx) => (
+            ) : customers.map((customer) => (
               <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-3">
@@ -211,25 +221,16 @@ const CustomerList = () => {
                 <td className="px-8 py-5 text-sm font-medium text-gray-500">
                   {new Date(customer.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </td>
-                <td className="px-8 py-5 text-right relative">
-                  <button onClick={() => setOpenMenuId(openMenuId === customer._id ? null : customer._id)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
+                <td className="px-8 py-5 text-right">
+                  <button
+                    onClick={e => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setMenuPos({ top: rect.bottom + window.scrollY + 4, left: rect.right + window.scrollX - 144 });
+                      setOpenMenuId(openMenuId === customer._id ? null : customer._id);
+                    }}
+                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
                     <MoreHorizontal className="w-5 h-5" />
                   </button>
-                  <AnimatePresence>
-                    {openMenuId === customer._id && (
-                      <motion.div initial={{ opacity: 0, scale: 0.95, y: -5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                        className={`absolute right-8 bg-white border border-gray-100 rounded-2xl shadow-lg z-10 overflow-hidden w-36 ${
-                          idx >= customers.length - 2 ? 'bottom-full mb-2' : 'top-12'
-                        }`}>
-                        <button onClick={() => openEdit(customer)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                          <Pencil className="w-4 h-4" /> Edit
-                        </button>
-                        <button onClick={() => { setDeleteId(customer._id); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-4 h-4" /> Delete
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </td>
               </tr>
             ))}
@@ -401,6 +402,31 @@ const CustomerList = () => {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      {/* Floating action menu */}
+      <AnimatePresence>
+        {openMenuId && (() => {
+          const customer = customers.find(c => c._id === openMenuId);
+          if (!customer) return null;
+          return (
+            <motion.div
+              ref={menuRef}
+              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+              style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+              className="bg-white border border-gray-100 rounded-2xl shadow-xl z-[200] overflow-hidden w-36"
+            >
+              <button onClick={() => openEdit(customer)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                <Pencil className="w-4 h-4" /> Edit
+              </button>
+              <button onClick={() => { setDeleteId(customer._id); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                <Trash2 className="w-4 h-4" /> Delete
+              </button>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Delete Confirm */}
