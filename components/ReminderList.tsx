@@ -1,36 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell, Plus, Search, Filter, Calendar, Clock,
   User, MessageSquare, MoreVertical, CheckCircle2,
   AlertCircle, X, Phone, Users, Hash,
   Check, ChevronRight, FileText, Repeat
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import { motion, AnimatePresence } from 'motion/react';
 
 type ReminderStatus = 'Scheduled' | 'Pending' | 'Sent' | 'Failed';
 
 interface Reminder {
-  id: number;
-  customer: string;
-  avatar: string;
+  _id: string;
+  customerName?: string;
+  customer?: { name: string };
   title: string;
-  date: string;
-  time: string;
+  scheduledAt: string;
   status: ReminderStatus;
   type: string;
+  // Support for new number name/phone
+  newName?: string;
+  newPhone?: string;
 }
 
-const allReminders: Reminder[] = [
-  { id: 1, customer: 'Sarah Jenkins', avatar: 'https://picsum.photos/seed/sarah/40/40', title: 'Subscription Renewal', date: 'Today', time: '10:30 AM', status: 'Scheduled', type: 'WhatsApp' },
-  { id: 2, customer: 'Marcus Chen', avatar: 'https://picsum.photos/seed/marcus/40/40', title: 'Appointment Conf.', date: 'Today', time: '02:15 PM', status: 'Pending', type: 'WhatsApp' },
-  { id: 3, customer: 'David Miller', avatar: 'https://picsum.photos/seed/david/40/40', title: 'Invoice Reminder', date: 'Tomorrow', time: '09:00 AM', status: 'Scheduled', type: 'WhatsApp' },
-  { id: 4, customer: 'Elena Rodriguez', avatar: 'https://picsum.photos/seed/elena/40/40', title: 'Welcome Message', date: 'Tomorrow', time: '11:45 AM', status: 'Scheduled', type: 'WhatsApp' },
-  { id: 5, customer: 'James Wilson', avatar: 'https://picsum.photos/seed/james/40/40', title: 'Payment Follow-up', date: '28 May', time: '03:00 PM', status: 'Sent', type: 'WhatsApp' },
-  { id: 6, customer: 'Priya Sharma', avatar: 'https://picsum.photos/seed/priya/40/40', title: 'Order Confirmation', date: '27 May', time: '10:00 AM', status: 'Sent', type: 'WhatsApp' },
-  { id: 7, customer: 'Tom Baker', avatar: 'https://picsum.photos/seed/tom/40/40', title: 'Renewal Notice', date: '26 May', time: '09:30 AM', status: 'Failed', type: 'WhatsApp' },
-  { id: 8, customer: 'Aisha Patel', avatar: 'https://picsum.photos/seed/aisha/40/40', title: 'Support Follow-up', date: '25 May', time: '04:00 PM', status: 'Failed', type: 'WhatsApp' },
-];
+// --- Modal UI state and data fetching ---
 
 const statusConfig: Record<ReminderStatus, { bg: string; text: string; label: string }> = {
   Scheduled: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Scheduled' },
@@ -47,27 +42,18 @@ const tabFilter: Record<Tab, (r: Reminder) => boolean> = {
   failed:    (r) => r.status === 'Failed',
 };
 
-// --- Mock data for UI ---
-const mockGroups = [
-  { id: 'g1', name: 'VIP Clients', color: '#10b981', members: [
-    { id: 'c1', name: 'Sarah Jenkins', phone: '+91 98765 43210' },
-    { id: 'c2', name: 'Marcus Chen', phone: '+91 91234 56789' },
-  ]},
-  { id: 'g2', name: 'New Leads', color: '#3b82f6', members: [
-    { id: 'c3', name: 'David Miller', phone: '+91 99887 76655' },
-    { id: 'c4', name: 'Elena Rodriguez', phone: '+91 88776 65544' },
-  ]},
-  { id: 'g3', name: 'Premium', color: '#8b5cf6', members: [
-    { id: 'c5', name: 'James Wilson', phone: '+91 77665 54433' },
-  ]},
-];
+type Template = {
+  _id: string;
+  name: string;
+  body: string;
+};
 
-const mockTemplates = [
-  { id: 't1', name: 'Subscription Renewal', body: 'Hi {{name}}, your subscription is due on {{date}}. Renew now to avoid interruption! 🔔' },
-  { id: 't2', name: 'Appointment Reminder', body: 'Hello {{name}}! Just a reminder about your appointment on {{date}} at {{time}}. See you soon! 📅' },
-  { id: 't3', name: 'Invoice Due', body: 'Dear {{name}}, your invoice #{{invoice}} of ₹{{amount}} is due on {{date}}. Please make the payment. 💳' },
-  { id: 't4', name: 'Welcome Message', body: 'Welcome to our service, {{name}}! 🎉 We are excited to have you on board. Feel free to reach out anytime.' },
-];
+type Group = {
+  _id: string;
+  name: string;
+  color: string;
+  members?: { _id: string; name: string; phone: string }[];
+};
 
 type RecipientType = 'new' | 'customers' | 'groups';
 
@@ -75,8 +61,8 @@ const ReminderList = () => {
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [reminders, setReminders] = useState<Reminder[]>(allReminders);
-  const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   // Modal wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -103,6 +89,40 @@ const ReminderList = () => {
   const [repeatEnds, setRepeatEnds] = useState<'never'|'on'|'after'>('never');
   const [repeatEndDate, setRepeatEndDate] = useState('');
   const [repeatAfterCount, setRepeatAfterCount] = useState(1);
+
+  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+
+  const fetchReminders = async () => {
+    try {
+      setLoading(true);
+      const data = await apiFetch(`/reminders?filterType=${activeTab}`);
+      setReminders(data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch reminders:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDependencies = async () => {
+    try {
+      const [gData, tData] = await Promise.all([
+        apiFetch('/customer-groups'),
+        apiFetch('/templates')
+      ]);
+      setGroups(gData.data || []);
+      setTemplates(tData.data || []);
+    } catch (err) {
+      console.error('Failed to fetch dependencies:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReminders();
+    fetchDependencies();
+  }, [activeTab]);
 
   const resetModal = () => {
     setShowModal(false);
@@ -143,11 +163,11 @@ const ReminderList = () => {
   const step3Valid = selectedTemplate !== null && schedDate !== '' && schedTime !== '';
 
   const filtered = reminders
-    .filter(tabFilter[activeTab])
-    .filter(r =>
-      r.customer.toLowerCase().includes(search.toLowerCase()) ||
-      r.title.toLowerCase().includes(search.toLowerCase())
-    );
+    .filter(r => {
+      const cname = r.customer?.name || r.newName || 'Unknown';
+      return cname.toLowerCase().includes(search.toLowerCase()) ||
+             r.title.toLowerCase().includes(search.toLowerCase());
+    });
 
   const stats = {
     sent: reminders.filter(r => r.status === 'Sent').length,
@@ -155,9 +175,14 @@ const ReminderList = () => {
     failed: reminders.filter(r => r.status === 'Failed').length,
   };
 
-  const handleDelete = (id: number) => {
-    setReminders(prev => prev.filter(r => r.id !== id));
-    setOpenMenu(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await apiFetch(`/reminders/${id}`, { method: 'DELETE' });
+      setReminders(prev => prev.filter(r => r._id !== id));
+      setOpenMenu(null);
+    } catch (err) {
+      console.error('Failed to delete reminder:', err);
+    }
   };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -265,22 +290,24 @@ const ReminderList = () => {
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map((reminder) => {
-              const s = statusConfig[reminder.status];
+              const s = statusConfig[reminder.status] || statusConfig.Scheduled;
+              const customerName = reminder.customer?.name || reminder.newName || 'Unknown';
+              const dateObj = new Date(reminder.scheduledAt);
               return (
                 <div
-                  key={reminder.id}
+                  key={reminder._id}
                   className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group"
                 >
                   {/* Left: avatar + info */}
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
-                      <img src={reminder.avatar} alt={reminder.customer} className="w-full h-full object-cover" />
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100 shrink-0">
+                      {customerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-900 text-sm truncate">{reminder.title}</h4>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <User className="w-3 h-3" /> {reminder.customer}
+                          <User className="w-3 h-3" /> {customerName}
                         </span>
                         <span className="w-1 h-1 bg-gray-200 rounded-full" />
                         <span className="flex items-center gap-1 text-xs text-gray-400">
@@ -294,10 +321,10 @@ const ReminderList = () => {
                   <div className="flex items-center gap-8 shrink-0">
                     <div className="text-right">
                       <div className="flex items-center gap-1 text-sm font-semibold text-gray-800 justify-end">
-                        <Calendar className="w-3 h-3 text-gray-400" /> {reminder.date}
+                        <Calendar className="w-3 h-3 text-gray-400" /> {dateObj.toLocaleDateString()}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-400 justify-end mt-0.5">
-                        <Clock className="w-3 h-3" /> {reminder.time}
+                        <Clock className="w-3 h-3" /> {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
 
@@ -307,16 +334,16 @@ const ReminderList = () => {
 
                     <div className="relative">
                       <button
-                        onClick={() => setOpenMenu(openMenu === reminder.id ? null : reminder.id)}
+                        onClick={() => setOpenMenu(openMenu === reminder._id ? null : reminder._id)}
                         className="p-2 text-gray-300 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      {openMenu === reminder.id && (
+                      {openMenu === reminder._id && (
                         <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
                           <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">Edit</button>
                           <button
-                            onClick={() => handleDelete(reminder.id)}
+                            onClick={() => handleDelete(reminder._id)}
                             className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500 font-medium"
                           >
                             Delete
@@ -428,27 +455,27 @@ const ReminderList = () => {
                     {selectedCustomers.length > 0 && (
                       <p className="text-xs font-bold text-emerald-600 mb-3">{selectedCustomers.length} customer{selectedCustomers.length > 1 ? 's' : ''} selected</p>
                     )}
-                    {mockGroups.map(group => (
-                      <div key={group.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                    {groups.map(group => (
+                      <div key={group._id} className="border border-gray-100 rounded-2xl overflow-hidden">
                         <button
-                          onClick={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
+                          onClick={() => setExpandedGroup(expandedGroup === group._id ? null : group._id)}
                           className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex items-center gap-3">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
                             <span className="text-sm font-semibold text-gray-800">{group.name}</span>
-                            <span className="text-xs text-gray-400">{group.members.length} members</span>
+                            <span className="text-xs text-gray-400">{group.members?.length || 0} members</span>
                           </div>
-                          <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${ expandedGroup === group.id ? 'rotate-90' : '' }`} />
+                          <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${ expandedGroup === group._id ? 'rotate-90' : '' }`} />
                         </button>
-                        {expandedGroup === group.id && (
+                        {expandedGroup === group._id && (
                           <div className="border-t border-gray-50 divide-y divide-gray-50">
-                            {group.members.map(member => {
-                              const isSelected = !!selectedCustomers.find(x => x.id === member.id);
+                            {group.members?.map(member => {
+                              const isSelected = !!selectedCustomers.find(x => x.id === member._id);
                               return (
                                 <button
-                                  key={member.id}
-                                  onClick={() => toggleCustomer(member)}
+                                  key={member._id}
+                                  onClick={() => toggleCustomer({ id: member._id, name: member.name, phone: member.phone })}
                                   className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors ${
                                     isSelected ? 'bg-emerald-50' : 'hover:bg-gray-50'
                                   }`}
@@ -474,33 +501,78 @@ const ReminderList = () => {
 
                 {/* Groups — multi select */}
                 {recipientType === 'groups' && (
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                     {selectedGroups.length > 0 && (
-                      <p className="text-xs font-bold text-emerald-600 mb-3">
-                        {mockGroups.filter(g => selectedGroups.includes(g.id)).reduce((a, g) => a + g.members.length, 0)} members across {selectedGroups.length} group{selectedGroups.length > 1 ? 's' : ''}
+                      <p className="text-xs font-bold text-emerald-600 mb-1">
+                        {groups.filter(g => selectedGroups.includes(g._id)).reduce((a, g) => a + (g.members?.length || 0), 0)} members across {selectedGroups.length} group{selectedGroups.length > 1 ? 's' : ''}
                       </p>
                     )}
-                    {mockGroups.map(group => {
-                      const isSelected = selectedGroups.includes(group.id);
+                    {groups.map(group => {
+                      const isSelected = selectedGroups.includes(group._id);
+                      const isExpanded = expandedGroup === group._id;
                       return (
-                        <button
-                          key={group.id}
-                          onClick={() => toggleGroup(group.id)}
-                          className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
-                            isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                        <div key={group._id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-gray-200">
+                          {/* Group Header */}
+                          <div className={`flex items-center justify-between p-3.5 transition-colors ${isSelected ? 'bg-emerald-50/50' : ''}`}>
+                            <div className="flex items-center gap-3 flex-1">
+                              <button
+                                onClick={() => toggleGroup(group._id)}
+                                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                  isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 text-white" />}
+                              </button>
+                              <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleGroup(group._id)}>
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                                <div>
+                                  <p className={`text-sm font-bold ${isSelected ? 'text-emerald-700' : 'text-gray-800'}`}>{group.name}</p>
+                                  <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{group.members?.length || 0} members</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <button
+                              onClick={() => setExpandedGroup(isExpanded ? null : group._id)}
+                              className={`p-2 rounded-xl transition-all ${isExpanded ? 'bg-gray-100 text-gray-600 rotate-90' : 'text-gray-400 hover:bg-gray-50'}`}
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
                           </div>
-                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                          <div className="flex-1">
-                            <p className={`text-sm font-bold ${ isSelected ? 'text-emerald-700' : 'text-gray-800' }`}>{group.name}</p>
-                            <p className="text-xs text-gray-400">{group.members.length} members</p>
-                          </div>
-                        </button>
+
+                          {/* Member List (Accordion) */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="border-t border-gray-50 bg-gray-50/30 overflow-hidden"
+                              >
+                                <div className="p-3 space-y-2">
+                                  {group.members && group.members.length > 0 ? (
+                                    group.members.map(member => (
+                                      <div key={member._id} className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-gray-50 shadow-xs">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 border border-gray-200">
+                                            {member.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                                          </div>
+                                          <div>
+                                            <p className="text-xs font-semibold text-gray-700">{member.name}</p>
+                                            <p className="text-[10px] text-gray-400">{member.phone}</p>
+                                          </div>
+                                        </div>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-400' : 'bg-gray-200 opacity-50'}`} />
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-xs text-gray-400 text-center py-2 italic font-medium">No members in this group</p>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       );
                     })}
                   </div>
@@ -516,20 +588,20 @@ const ReminderList = () => {
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Template</label>
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                    {mockTemplates.map(t => (
-                      <button key={t.id} onClick={() => setSelectedTemplate(t.id)}
+                    {templates.map(t => (
+                      <button key={t._id} onClick={() => setSelectedTemplate(t._id)}
                         className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border-2 text-left transition-all ${
-                          selectedTemplate === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                          selectedTemplate === t._id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                         }`}
                       >
-                        <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${ selectedTemplate === t.id ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400' }`}>
+                        <div className={`p-1.5 rounded-lg mt-0.5 shrink-0 ${ selectedTemplate === t._id ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400' }`}>
                           <FileText className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold ${ selectedTemplate === t.id ? 'text-emerald-700' : 'text-gray-800' }`}>{t.name}</p>
+                          <p className={`text-sm font-bold ${ selectedTemplate === t._id ? 'text-emerald-700' : 'text-gray-800' }`}>{t.name}</p>
                           <p className="text-xs text-gray-400 truncate mt-0.5">{t.body}</p>
                         </div>
-                        {selectedTemplate === t.id && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
+                        {selectedTemplate === t._id && <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
                       </button>
                     ))}
                   </div>
@@ -691,22 +763,38 @@ const ReminderList = () => {
                 onClick={() => {
                   if (step < 3) { setStep(s => (s + 1) as 1|2|3); return; }
                   // Final submit
-                  const templateName = mockTemplates.find(t => t.id === selectedTemplate)?.name ?? 'Reminder';
-                  const customerName =
-                    recipientType === 'new' ? newName :
-                    recipientType === 'customers' ? (selectedCustomers.length === 1 ? selectedCustomers[0].name : `${selectedCustomers.length} Customers`) :
-                    selectedGroups.length === 1 ? (mockGroups.find(g => g.id === selectedGroups[0])?.name ?? 'Group') : `${selectedGroups.length} Groups`;
-                  setReminders(prev => [{
-                    id: Date.now(),
-                    customer: customerName,
-                    avatar: `https://picsum.photos/seed/${customerName}/40/40`,
-                    title: templateName,
-                    date: schedDate,
-                    time: schedTime,
-                    status: 'Scheduled',
-                    type: 'WhatsApp',
-                  }, ...prev]);
-                  resetModal();
+                  const handleFinalSubmit = async () => {
+                    try {
+                      const payload = {
+                        title: templates.find(t => t._id === selectedTemplate)?.name || 'Reminder',
+                        recipientType,
+                        template: selectedTemplate,
+                        scheduledAt: new Date(`${schedDate}T${schedTime}`),
+                        newName,
+                        newPhone,
+                        customers: selectedCustomers.map(c => c.id),
+                        groups: selectedGroups,
+                        repeat: {
+                          enabled: repeatEnabled,
+                          frequency: repeatFreq,
+                          interval: repeatInterval,
+                          days: repeatDays,
+                          monthDay: repeatMonthDay,
+                          startDate: repeatStartDate ? new Date(repeatStartDate) : undefined,
+                          ends: repeatEnds,
+                          endDate: repeatEndDate ? new Date(repeatEndDate) : undefined,
+                          afterCount: repeatAfterCount
+                        }
+                      };
+
+                      await apiFetch('/reminders', { method: 'POST', body: JSON.stringify(payload) });
+                      fetchReminders();
+                      resetModal();
+                    } catch (err) {
+                      console.error('Failed to create reminder:', err);
+                    }
+                  };
+                  handleFinalSubmit();
                 }}
                 disabled={step === 1 ? !step1Valid : step === 2 ? !step2Valid : !step3Valid}
                 className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
