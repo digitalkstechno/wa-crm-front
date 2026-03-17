@@ -254,6 +254,12 @@ const ReminderList = () => {
     failed: stats.failed,
   };
 
+  const now = new Date();
+  const minDate = now.toISOString().split('T')[0];
+  const minTime = schedDate === minDate
+    ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    : '00:00';
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'completed', label: 'Completed' },
@@ -715,7 +721,8 @@ const ReminderList = () => {
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Date</label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)}
+                      <input type="date" value={schedDate} onChange={e => { setSchedDate(e.target.value); setSchedTime(''); }}
+                        min={minDate}
                         className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400" />
                     </div>
                   </div>
@@ -724,6 +731,7 @@ const ReminderList = () => {
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)}
+                        min={minTime}
                         className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400" />
                     </div>
                   </div>
@@ -807,6 +815,7 @@ const ReminderList = () => {
                         <div className="relative">
                           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                           <input type="date" value={repeatStartDate} onChange={e => setRepeatStartDate(e.target.value)}
+                            min={schedDate || minDate}
                             className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400" />
                         </div>
                       </div>
