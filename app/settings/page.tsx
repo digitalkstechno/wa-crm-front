@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Save, Eye, EyeOff, Check } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
-import { toast } from 'sonner';
-
 type Tab = 'profile' | 'password';
+type Toast = { type: 'success' | 'error'; message: string } | null;
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -14,6 +13,12 @@ export default function SettingsPage() {
 
   const [profile, setProfile] = useState({ fullName: '', email: '', phone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [toast, setToast] = useState<Toast>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
   const [showCurrent, setShowCurrent] = useState(false);
@@ -31,15 +36,15 @@ export default function SettingsPage() {
 
   const handleProfileSave = async () => {
     if (!profile.fullName.trim() || !profile.email.trim()) {
-      toast.error('Name and email are required');
+      showToast('error', 'Name and email are required');
       return;
     }
     setSavingProfile(true);
     try {
       await apiFetch('/staff/me', { method: 'PUT', body: JSON.stringify({ fullName: profile.fullName, email: profile.email, phone: profile.phone }) });
-      toast.success('Profile updated successfully');
+      showToast('success', 'Profile updated successfully');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update profile');
+      showToast('error', err.message || 'Failed to update profile');
     } finally {
       setSavingProfile(false);
     }
@@ -47,24 +52,24 @@ export default function SettingsPage() {
 
   const handlePasswordSave = async () => {
     if (!passwords.current || !passwords.newPass || !passwords.confirm) {
-      toast.error('All password fields are required');
+      showToast('error', 'All password fields are required');
       return;
     }
     if (passwords.newPass !== passwords.confirm) {
-      toast.error('New passwords do not match');
+      showToast('error', 'New passwords do not match');
       return;
     }
     if (passwords.newPass.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      showToast('error', 'Password must be at least 6 characters');
       return;
     }
     setSavingPassword(true);
     try {
       await apiFetch('/staff/me', { method: 'PUT', body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.newPass }) });
-      toast.success('Password changed successfully');
+      showToast('success', 'Password changed successfully');
       setPasswords({ current: '', newPass: '', confirm: '' });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to change password');
+      showToast('error', err.message || 'Failed to change password');
     } finally {
       setSavingPassword(false);
     }
@@ -81,6 +86,15 @@ export default function SettingsPage() {
         <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
         <p className="text-sm text-gray-500 mt-0.5">Manage your account and app configuration</p>
       </div>
+
+      {toast && (
+        <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-semibold ${
+          toast.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          <span>{toast.type === 'success' ? '✓' : '✕'}</span>
+          {toast.message}
+        </div>
+      )}
 
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex border-b border-gray-100">
