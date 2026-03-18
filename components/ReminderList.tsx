@@ -263,6 +263,16 @@ const ReminderList = () => {
     }
   };
 
+  const handleRetry = async (id: string) => {
+    try {
+      await apiFetch(`/reminders/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'Scheduled' }) });
+      setOpenMenu(null);
+      fetchReminders();
+    } catch (err) {
+      console.error('Failed to retry reminder:', err);
+    }
+  };
+
   const tabCount: Record<Tab, number> = {
     upcoming: stats.pending,
     completed: stats.sent,
@@ -453,6 +463,9 @@ const ReminderList = () => {
                       {openMenu === reminder._id && (
                         <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
                           <button onClick={() => handleEdit(reminder)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">Edit</button>
+                          {reminder.status === 'Failed' && (
+                            <button onClick={() => handleRetry(reminder._id)} className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 font-medium">Retry</button>
+                          )}
                           <button
                             onClick={() => handleDelete(reminder._id)}
                             className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-500 font-medium"

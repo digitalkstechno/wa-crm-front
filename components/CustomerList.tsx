@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, MoreHorizontal, X, Users, ChevronDown, Check, Trash2, Pencil } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, X, Users, ChevronDown, Check, Trash2, Pencil, Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { type Group } from '@/lib/groups';
@@ -50,6 +50,8 @@ const CustomerList = () => {
   }, []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
 
@@ -136,6 +138,40 @@ const CustomerList = () => {
 
   const openCreate = () => { setEditingCustomer(null); setForm(emptyForm); setErrors({}); setIsDrawerOpen(true); };
 
+  const handleExportCSV = () => {
+    const headers = ['Name', 'Phone', 'Email', 'Tags', 'Group', 'Notes'];
+    const rows = customers.map(c => [
+      c.name, c.phone, c.email,
+      c.tags.join(';'),
+      c.group?.name || '',
+      c.notes
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'customers.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    const text = await file.text();
+    const lines = text.trim().split('\n').slice(1);
+    const toImport = lines.map(line => {
+      const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"'));
+      return { name: cols[0] || '', phone: cols[1] || '', email: cols[2] || '', tags: cols[3] ? cols[3].split(';') : [], notes: cols[5] || '' };
+    }).filter(c => c.name && c.phone);
+    for (const c of toImport) {
+      try { await apiFetch('/customers', { method: 'POST', body: JSON.stringify(c) }); } catch {}
+    }
+    setImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    fetchCustomers(search, 1);
+  };
+
   const openEdit = (c: Customer) => {
     setEditingCustomer(c);
     setForm({ name: c.name, phone: c.phone, email: c.email, tags: c.tags, group: c.group?._id ?? '', notes: c.notes, tagInput: '' });
@@ -165,6 +201,13 @@ const CustomerList = () => {
           <Link href="/customers/groups" className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
             <Users className="w-4 h-4" /> Customer Groups
           </Link>
+          <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+            <Download className="w-4 h-4" /> Export
+          </button>
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50">
+            <Upload className="w-4 h-4" /> {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
           <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200">
             <Plus className="w-4 h-4" /> Add New Customer
           </button>

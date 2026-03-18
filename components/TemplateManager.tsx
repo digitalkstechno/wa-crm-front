@@ -208,16 +208,9 @@ export default function TemplateManager() {
                   </div>
                   <div className="flex-1 p-3 overflow-y-auto">
                     <div className="bg-white rounded-2xl rounded-tl-none p-2.5 shadow-sm">
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap font-bold">Order Update</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap font-bold"><br></br></p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">Hello</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{`{{name}}`}</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{`Order ID: `}</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{`{{orderId}}`}</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{`Your Order Update is`}</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{previewTemplate.body}</p>
-                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap">{`Follow more info connect us.`}</p>
-                      <p className="text-[8px] text-gray-400 text-right mt-1">9:41 AM</p>
+                      <p className="text-[10px] font-bold text-gray-800 leading-relaxed">{previewTemplate.name}</p>
+                      <p className="text-[10px] text-gray-800 leading-relaxed whitespace-pre-wrap mt-1">{previewTemplate.body}</p>
+                      <p className="text-[8px] text-gray-400 text-right mt-1">9:41 AM ✓✓</p>
                     </div>
                   </div>
                 </div>
