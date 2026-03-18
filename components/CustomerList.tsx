@@ -40,6 +40,10 @@ const CustomerList = () => {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportGroupId, setExportGroupId] = useState('');
+  const [exporting, setExporting] = useState(false);
+
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -138,21 +142,42 @@ const CustomerList = () => {
 
   const openCreate = () => { setEditingCustomer(null); setForm(emptyForm); setErrors({}); setIsDrawerOpen(true); };
 
-  const handleExportCSV = () => {
-    const headers = ['Name', 'Phone', 'Email', 'Tags', 'Group', 'Notes'];
-    const rows = customers.map(c => [
-      c.name, c.phone, c.email,
-      c.tags.join(';'),
-      c.group?.name || '',
-      c.notes
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'customers.csv'; a.click();
-    URL.revokeObjectURL(url);
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (exportGroupId) params.set('groupId', exportGroupId);
+      
+      // Use window.location.origin to get the base URL if needed, 
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/v1/api';
+      const token = localStorage.getItem('wa_crm_token');
+      
+      const response = await fetch(`${baseUrl}/customers/export-excel?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setExportModalOpen(false);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export excel');
+    } finally {
+      setExporting(false);
+    }
   };
+
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -201,9 +226,10 @@ const CustomerList = () => {
           <Link href="/customers/groups" className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
             <Users className="w-4 h-4" /> Customer Groups
           </Link>
-          <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+          <button onClick={() => setExportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
             <Download className="w-4 h-4" /> Export
           </button>
+
           <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50">
             <Upload className="w-4 h-4" /> {importing ? 'Importing...' : 'Import CSV'}
           </button>
@@ -492,8 +518,56 @@ const CustomerList = () => {
           </>
         )}
       </AnimatePresence>
+      {/* Export Modal */}
+      <AnimatePresence>
+        {exportModalOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExportModalOpen(false)} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2rem] shadow-2xl z-[70] p-8 w-[400px]">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Export Customers</h3>
+                <button onClick={() => setExportModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="space-y-4 mb-8">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Group to Export</label>
+                  <select 
+                    value={exportGroupId} 
+                    onChange={(e) => setExportGroupId(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="">All Customers</option>
+                    {groups.map(g => (
+                      <option key={g._id} value={g._id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-gray-400">The exported Excel file will contain a dropdown menu in the "Group" column for easy editing.</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  onClick={handleExportExcel} 
+                  disabled={exporting}
+                  className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 disabled:opacity-70"
+                >
+                  {exporting ? 'Exporting...' : 'Download Excel'}
+                </button>
+                <button onClick={() => setExportModalOpen(false)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
 
 export default CustomerList;
