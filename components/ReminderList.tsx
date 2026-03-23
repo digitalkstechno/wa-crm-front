@@ -20,10 +20,11 @@ interface Reminder {
   groups?: { _id: string; name: string }[];
   recipientType?: 'new' | 'customers' | 'groups';
   title: string;
+  reminderName?: string;
   scheduledAt: string;
   status: ReminderStatus;
   type: string;
-  template?: { _id: string; name: string } | string;
+  template?: { _id: string; name: string; body?: string } | string;
   newName?: string;
   newPhone?: string;
   repeat?: {
@@ -78,6 +79,7 @@ const ReminderList = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingReminder, setViewingReminder] = useState<Reminder | null>(null);
 
   // Modal wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -92,6 +94,7 @@ const ReminderList = () => {
   // Groups
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   // Template
+  const [reminderName, setReminderName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [schedDate, setSchedDate] = useState('');
   const [schedTime, setSchedTime] = useState('');
@@ -158,6 +161,7 @@ const ReminderList = () => {
     setExpandedGroup(null);
     setSelectedCustomers([]);
     setSelectedGroups([]);
+    setReminderName('');
     setSelectedTemplate(null);
     setSchedDate(''); setSchedTime('');
     setRepeatEnabled(false);
@@ -226,6 +230,7 @@ const ReminderList = () => {
         r.customers?.map((c: any) => ({ id: c._id, name: c.name, phone: c.phone || '' })) || []
       );
       setSelectedGroups(r.groups?.map((g: any) => g._id) || []);
+      setReminderName(r.reminderName || '');
 
       const tplId = typeof r.template === 'object' ? r.template?._id : r.template;
       setSelectedTemplate(tplId || null);
@@ -425,15 +430,33 @@ const ReminderList = () => {
                       {customerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-gray-900 text-sm truncate">{reminder.title}</h4>
+                      <h4 className="font-semibold text-gray-900 text-sm truncate">{reminder.reminderName || reminder.title}</h4>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <User className="w-3 h-3" /> {customerName}
                         </span>
+                        {(reminder.recipientType === 'new' && reminder.newPhone) && (
+                          <><span className="w-1 h-1 bg-gray-200 rounded-full" />
+                          <span className="flex items-center gap-1 text-xs text-gray-400">
+                            <Phone className="w-3 h-3" /> {reminder.newPhone}
+                          </span></>
+                        )}
+                        {(reminder.recipientType === 'customers' && reminder.customers && reminder.customers.length === 1 && reminder.customers[0].phone) && (
+                          <><span className="w-1 h-1 bg-gray-200 rounded-full" />
+                          <span className="flex items-center gap-1 text-xs text-gray-400">
+                            <Phone className="w-3 h-3" /> {reminder.customers[0].phone}
+                          </span></>
+                        )}
                         <span className="w-1 h-1 bg-gray-200 rounded-full" />
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <MessageSquare className="w-3 h-3" /> {reminder.type}
                         </span>
+                        {typeof reminder.template === 'object' && reminder.template?.name && (
+                          <><span className="w-1 h-1 bg-gray-200 rounded-full" />
+                          <span className="flex items-center gap-1 text-xs text-gray-400">
+                            <FileText className="w-3 h-3" /> {reminder.template.name}
+                          </span></>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -462,6 +485,7 @@ const ReminderList = () => {
                       </button>
                       {openMenu === reminder._id && (
                         <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
+                          <button onClick={async () => { setOpenMenu(null); try { const res = await apiFetch(`/reminders/${reminder._id}`); setViewingReminder(res.data); } catch { setViewingReminder(reminder); } }} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">View</button>
                           <button onClick={() => handleEdit(reminder)} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 font-medium">Edit</button>
                           {reminder.status === 'Failed' && (
                             <button onClick={() => handleRetry(reminder._id)} className="w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-600 font-medium">Retry</button>
@@ -518,6 +542,14 @@ const ReminderList = () => {
             {/* Step 1 — Recipient Type */}
             {step === 1 && (
               <div className="px-8 py-6 space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Reminder Name</label>
+                  <input
+                    type="text" placeholder="e.g. Follow-up Reminder"
+                    value={reminderName} onChange={e => setReminderName(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+                  />
+                </div>
                 {([
                   { type: 'new' as RecipientType, icon: Phone, label: 'New Number', desc: 'Enter a name and phone number manually' },
                   { type: 'customers' as RecipientType, icon: Users, label: 'Customers', desc: 'Pick from existing customers by group' },
@@ -917,6 +949,7 @@ const ReminderList = () => {
                     try {
                       const payload = {
                         title: templates.find(t => t._id === selectedTemplate)?.name || 'Reminder',
+                        reminderName,
                         recipientType,
                         template: selectedTemplate,
                         scheduledAt: new Date(`${schedDate}T${schedTime}`),
@@ -954,6 +987,89 @@ const ReminderList = () => {
                 className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {step === 3 ? (editingId ? 'Save Changes' : 'Create Reminder') : 'Next'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* View Reminder Modal */}
+      {viewingReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="px-8 pt-7 pb-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Reminder Details</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Full information for this reminder</p>
+              </div>
+              <button onClick={() => setViewingReminder(null)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              {/* Recipient Info */}
+              <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Recipients</label>
+                {viewingReminder.recipientType === 'customers' && viewingReminder.customers && viewingReminder.customers.length > 0 ? (
+                  viewingReminder.customers.map(c => (
+                    <div key={c._id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100">
+                          {c.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                        <span className="text-sm font-bold text-gray-900">{c.name}</span>
+                      </div>
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                        <Phone className="w-3 h-3" />{c.phone || 'N/A'}
+                      </span>
+                    </div>
+                  ))
+                ) : viewingReminder.recipientType === 'groups' && viewingReminder.groups ? (
+                  <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-gray-100">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-bold text-gray-900">{viewingReminder.groups.map(g => g.name).join(', ')}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100">
+                        {(viewingReminder.customer?.name || viewingReminder.newName || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">{viewingReminder.customer?.name || viewingReminder.newName || 'N/A'}</span>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                      <Phone className="w-3 h-3" />{viewingReminder.customer?.phone || viewingReminder.newPhone || 'N/A'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+
+
+              {/* Message / Template */}
+              <div className="border border-gray-100 rounded-2xl p-5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Message Content</label>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900">
+                      {typeof viewingReminder.template === 'object' ? viewingReminder.template.name : 'Custom Message'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                      {typeof viewingReminder.template === 'object' ? viewingReminder.template.body : viewingReminder.title}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+
+            <div className="px-8 pb-8 pt-2">
+              <button onClick={() => setViewingReminder(null)} className="w-full py-3 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-all shadow-lg shadow-gray-200">
+                Close
               </button>
             </div>
           </div>
