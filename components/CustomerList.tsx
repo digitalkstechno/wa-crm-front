@@ -64,17 +64,17 @@ const CustomerList = () => {
     fetchGroups();
   }, []);
 
-  const fetchCustomers = async (q = '', p = 1) => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (q) params.set('search', q);
-    params.set('page', String(p));
-    params.set('limit', '10');
-    const data = await apiFetch(`/customers?${params.toString()}`);
-    setCustomers(data.data ?? []);
-    if (data.pagination) setPagination(data.pagination);
-    setLoading(false);
-  };
+    const fetchCustomers = async (q = '', p = 1) => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (q) params.set('search', q);
+      params.set('page', String(p));
+      params.set('limit', '10');
+      const data = await apiFetch(`/customers?${params.toString()}`);
+      setCustomers(data.data ?? []);
+      if (data.pagination) setPagination(data.pagination);
+      setLoading(false);
+    };
 
   const fetchGroups = async () => {
     const data = await apiFetch('/customer-groups');
