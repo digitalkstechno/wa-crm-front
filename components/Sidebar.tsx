@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  CheckSquare,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -91,6 +93,7 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
           if (item.id === 'settings') {
             const isProfileActive = pathname === '/settings';
             const isStaffActive = pathname === '/settings/staff';
+            const isTaskStatusActive = pathname === '/settings/task-status';
             return (
               <div key={item.id} className="space-y-1">
                 <button
@@ -134,6 +137,24 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
                       )}
                     >
                       Staff
+                    </Link>
+                    <Link
+                      href="/settings/task-status"
+                      className={cn(
+                        "block px-3 py-2 rounded-lg text-sm transition-all",
+                        isTaskStatusActive ? "bg-emerald-50 text-emerald-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      )}
+                    >
+                      Task Statuses
+                    </Link>
+                    <Link
+                      href="/settings/task-types"
+                      className={cn(
+                        "block px-3 py-2 rounded-lg text-sm transition-all",
+                        pathname === '/settings/task-types' ? "bg-emerald-50 text-emerald-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      )}
+                    >
+                      Task Types
                     </Link>
                   </div>
                 )}
