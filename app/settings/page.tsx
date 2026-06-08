@@ -8,18 +8,17 @@ import { useAuth } from '@/components/AuthProvider';
 type Tab = 'profile' | 'password' | 'task-statuses';
 type Toast = { type: 'success' | 'error'; message: string } | null;
 
-interface TaskStatus {
-  _id: string;
-  name: string;
-  color: string;
-  order: number;
-}
-
-const PRESET_COLORS = [
-  '#6b7280', '#3b82f6', '#10b981', '#ef4444',
-  '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6',
-  '#f97316', '#06b6d4',
-];
+const formatPhone = (val: string) => {
+  if (!val) return '+91 ';
+  let digits = val.replace(/\D/g, '');
+  if (digits.startsWith('91') && digits.length > 10) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 10);
+  if (digits.length === 0) return '+91 ';
+  if (digits.length <= 5) return `+91 ${digits}`;
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+};
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -48,10 +47,47 @@ export default function SettingsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let inputVal = e.target.value;
+    
+    if (!inputVal.startsWith('+91 ')) {
+      if (inputVal === '+91' || inputVal === '+9' || inputVal === '+' || inputVal === '') {
+        inputVal = '+91 ';
+      } else {
+        const digits = inputVal.replace(/\D/g, '');
+        if (digits.startsWith('91') && digits.length > 10) {
+          inputVal = '+91 ' + digits.slice(2);
+        } else {
+          inputVal = '+91 ' + digits;
+        }
+      }
+    }
+
+    const suffix = inputVal.slice(4);
+    let digits = suffix.replace(/\D/g, '');
+    digits = digits.slice(0, 10);
+    
+    let formatted = '+91 ';
+    if (digits.length > 0) {
+      if (digits.length <= 5) {
+        formatted = `+91 ${digits}`;
+      } else {
+        formatted = `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+      }
+    }
+    
+    setProfile(p => ({ ...p, phone: formatted }));
+  };
+
   useEffect(() => {
     apiFetch('/staff/me').then(res => {
       const d = res.data;
-      setProfile({ fullName: d.fullName || '', email: d.email || '', phone: d.phone || '' });
+      setProfile({ fullName: d.fullName || '', email: d.email || '', phone: formatPhone(d.phone || '') });
     }).catch(() => {
       if (user) setProfile({ fullName: user.fullName || '', email: user.email || '', phone: '' });
     });
@@ -69,7 +105,20 @@ export default function SettingsPage() {
   };
 
   const handleProfileSave = async () => {
-    if (!profile.fullName.trim() || !profile.email.trim()) { showToast('error', 'Name and email are required'); return; }
+    if (!profile.fullName.trim() || !profile.email.trim()) {
+      showToast('error', 'Name and email are required');
+      return;
+    }
+    
+    if (profile.phone) {
+      const digits = profile.phone.replace(/\D/g, '');
+      const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
+      if (actualDigits.length !== 10) {
+        showToast('error', 'Phone number must be exactly 10 digits');
+        return;
+      }
+    }
+    
     setSavingProfile(true);
     try {
       await apiFetch('/staff/me', { method: 'PUT', body: JSON.stringify({ fullName: profile.fullName, email: profile.email, phone: profile.phone }) });
@@ -191,8 +240,13 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone</label>
-                  <input type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300" />
+                  <input
+                    type="tel"
+                    placeholder="+91 xxxxx xxxxx"
+                    value={profile.phone}
+                    onChange={handlePhoneChange}
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300"
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">

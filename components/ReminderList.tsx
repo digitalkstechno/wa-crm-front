@@ -95,6 +95,18 @@ type Group = {
 
 type RecipientType = "new" | "customers" | "groups";
 
+const formatPhone = (val: string) => {
+  if (!val) return '+91 ';
+  let digits = val.replace(/\D/g, '');
+  if (digits.startsWith('91') && digits.length > 10) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 10);
+  if (digits.length === 0) return '+91 ';
+  if (digits.length <= 5) return `+91 ${digits}`;
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+};
+
 const ReminderList = () => {
   const [activeTab, setActiveTab] = useState<Tab>("upcoming");
 
@@ -111,7 +123,39 @@ const ReminderList = () => {
   );
   // New number
   const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
+  const [newPhone, setNewPhone] = useState("+91 ");
+
+  const handleNewPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let inputVal = e.target.value;
+    
+    if (!inputVal.startsWith('+91 ')) {
+      if (inputVal === '+91' || inputVal === '+9' || inputVal === '+' || inputVal === '') {
+        inputVal = '+91 ';
+      } else {
+        const digits = inputVal.replace(/\D/g, '');
+        if (digits.startsWith('91') && digits.length > 10) {
+          inputVal = '+91 ' + digits.slice(2);
+        } else {
+          inputVal = '+91 ' + digits;
+        }
+      }
+    }
+
+    const suffix = inputVal.slice(4);
+    let digits = suffix.replace(/\D/g, '');
+    digits = digits.slice(0, 10);
+    
+    let formatted = '+91 ';
+    if (digits.length > 0) {
+      if (digits.length <= 5) {
+        formatted = `+91 ${digits}`;
+      } else {
+        formatted = `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+      }
+    }
+    
+    setNewPhone(formatted);
+  };
   // Customers
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState<Record<string, string>>(
@@ -225,7 +269,7 @@ const ReminderList = () => {
     setStep(1);
     setRecipientType(null);
     setNewName("");
-    setNewPhone("");
+    setNewPhone("+91 ");
     setCustomerSearch({});
     setExpandedGroup(null);
     setSelectedCustomers([]);
@@ -264,8 +308,11 @@ const ReminderList = () => {
 
   const step1Valid = recipientType !== null;
   const step2Valid = (() => {
-    if (recipientType === "new")
-      return newName.trim() !== "" && newPhone.trim() !== "";
+    if (recipientType === "new") {
+      const digits = newPhone.replace(/\D/g, '');
+      const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
+      return newName.trim() !== "" && newPhone.trim() !== "" && actualDigits.length === 10;
+    }
     if (recipientType === "customers") return selectedCustomers.length > 0;
     if (recipientType === "groups") return selectedGroups.length > 0;
     return false;
@@ -323,7 +370,7 @@ const ReminderList = () => {
       setEditingId(r._id);
       setRecipientType(r.recipientType || "new");
       setNewName(r.newName || "");
-      setNewPhone(r.newPhone || "");
+      setNewPhone(formatPhone(r.newPhone || ""));
       setSelectedCustomers(
         r.customers?.map((c: any) => ({
           id: c._id,
@@ -1002,9 +1049,9 @@ const ReminderList = () => {
                       </label>
                       <input
                         type="tel"
-                        placeholder="e.g. +91 98765 43210"
+                        placeholder="+91 xxxxx xxxxx"
                         value={newPhone}
-                        onChange={(e) => setNewPhone(e.target.value)}
+                        onChange={handleNewPhoneChange}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
                       />
                     </div>
