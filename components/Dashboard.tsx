@@ -30,7 +30,7 @@ import { apiFetch } from "@/lib/api";
 
 interface DashboardData {
   stats: {
-    totalCustomers: number;
+    totalUsers: number;
     activeReminders: number;
     sentToday: number;
     failedToday: number;
@@ -42,7 +42,7 @@ interface DashboardData {
     title: string;
     status: string;
     scheduledAt: string;
-    customerName: string;
+    userName: string;
   }[];
 }
 
@@ -65,7 +65,7 @@ const Dashboard = () => {
   const [calendarReminders, setCalendarReminders] = useState<
     Record<
       string,
-      { title: string; status: string; customerName: string; time: string }[]
+      { title: string; status: string; userName: string; time: string }[]
     >
   >({});
 
@@ -74,7 +74,7 @@ const Dashboard = () => {
     items: {
       title: string;
       status: string;
-      customerName: string;
+      userName: string;
       time: string;
     }[];
   } | null>(null);
@@ -111,7 +111,7 @@ const Dashboard = () => {
 
       const grouped: Record<
         string,
-        { title: string; status: string; customerName: string; time: string }[]
+        { title: string; status: string; userName: string; time: string }[]
       > = {};
       all.forEach((r: any) => {
         const d = new Date(r.scheduledAt);
@@ -120,10 +120,10 @@ const Dashboard = () => {
         grouped[key].push({
           title: r.reminderName || r.title || "—",
           status: r.status,
-          customerName:
-            r.customers?.map((c: any) => c.name).join(", ") ||
+          userName:
+            r.users?.map((c: any) => c.name).join(", ") ||
             r.groups?.map((g: any) => g.name).join(", ") ||
-            r.customer?.name ||
+            r.user?.name ||
             r.newName ||
             "—",
           time: d.toLocaleTimeString([], {
@@ -145,8 +145,8 @@ const Dashboard = () => {
   const stats = data
     ? [
         {
-          label: "Total Customers",
-          value: data.stats.totalCustomers.toLocaleString(),
+          label: "Total Users",
+          value: data.stats.totalUsers.toLocaleString(),
           icon: Users,
           color: "bg-emerald-50 text-emerald-600",
         },
@@ -365,7 +365,7 @@ const Dashboard = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                <th className="px-8 py-4">Customer</th>
+                <th className="px-8 py-4">User</th>
                 <th className="px-8 py-4">Reminder Title</th>
                 <th className="px-8 py-4">Scheduled Time</th>
                 <th className="px-8 py-4">Status</th>
@@ -390,7 +390,7 @@ const Dashboard = () => {
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
-                              {activity.customerName
+                              {activity.userName
                                 .split(" ")
                                 .map((w) => w[0])
                                 .join("")
@@ -398,7 +398,7 @@ const Dashboard = () => {
                                 .slice(0, 2)}
                             </div>
                             <span className="text-sm font-semibold text-gray-900">
-                              {activity.customerName}
+                              {activity.userName}
                             </span>
                           </div>
                         </td>

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { type Group } from '@/lib/groups';
 import { apiFetch } from '@/lib/api';
 
-type Customer = {
+type User = {
   _id: string;
   name: string;
   phone: string;
@@ -39,11 +39,11 @@ const formatPhone = (val: string) => {
   return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
 };
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+const UserList = () => {
+  const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Partial<typeof emptyForm>>({});
   const [search, setSearch] = useState('');
@@ -105,36 +105,36 @@ const CustomerList = () => {
   };
 
   useEffect(() => {
-    fetchCustomers(search, 1);
+    fetchUsers(search, 1);
     fetchGroups();
   }, []);
 
-    const fetchCustomers = async (q = '', p = 1) => {
+    const fetchUsers = async (q = '', p = 1) => {
       setLoading(true);
       const params = new URLSearchParams();
       if (q) params.set('search', q);
       params.set('page', String(p));
       params.set('limit', '10');
-      const data = await apiFetch(`/customers?${params.toString()}`);
-      setCustomers(data.data ?? []);
+      const data = await apiFetch(`/users?${params.toString()}`);
+      setUsers(data.data ?? []);
       if (data.pagination) setPagination(data.pagination);
       setLoading(false);
     };
 
   const fetchGroups = async () => {
-    const data = await apiFetch('/customer-groups');
+    const data = await apiFetch('/user-groups');
     setGroups(data.data ?? []);
   };
 
   useEffect(() => {
     setPage(1);
-    const t = setTimeout(() => fetchCustomers(search, 1), 300);
+    const t = setTimeout(() => fetchUsers(search, 1), 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const handlePageChange = (p: number) => {
     setPage(p);
-    fetchCustomers(search, p);
+    fetchUsers(search, p);
   };
 
   const addTag = (val: string) => {
@@ -173,28 +173,28 @@ const CustomerList = () => {
     if (!validate()) return;
     setSaving(true);
     const payload = { name: form.name, phone: form.phone, email: form.email, tags: form.tags, group: form.group || null, notes: form.notes };
-    if (editingCustomer) {
-      await apiFetch(`/customers/${editingCustomer._id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    if (editingUser) {
+      await apiFetch(`/users/${editingUser._id}`, { method: 'PUT', body: JSON.stringify(payload) });
     } else {
-      await apiFetch('/customers', { method: 'POST', body: JSON.stringify(payload) });
+      await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
     }
     setSaving(false);
     setIsDrawerOpen(false);
     setForm(emptyForm);
     setErrors({});
-    setEditingCustomer(null);
-    fetchCustomers(search, page);
+    setEditingUser(null);
+    fetchUsers(search, page);
   };
 
   const handleDelete = async (id: string) => {
-    await apiFetch(`/customers/${id}`, { method: 'DELETE' });
+    await apiFetch(`/users/${id}`, { method: 'DELETE' });
     setDeleteId(null);
-    const newPage = customers.length === 1 && page > 1 ? page - 1 : page;
+    const newPage = users.length === 1 && page > 1 ? page - 1 : page;
     setPage(newPage);
-    fetchCustomers(search, newPage);
+    fetchUsers(search, newPage);
   };
 
-  const openCreate = () => { setEditingCustomer(null); setForm(emptyForm); setErrors({}); setIsDrawerOpen(true); };
+  const openCreate = () => { setEditingUser(null); setForm(emptyForm); setErrors({}); setIsDrawerOpen(true); };
 
 
   const handleExportExcel = async () => {
@@ -207,7 +207,7 @@ const CustomerList = () => {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/v1/api';
       const token = localStorage.getItem('wa_crm_token');
       
-      const response = await fetch(`${baseUrl}/customers/export-excel?${params.toString()}`, {
+      const response = await fetch(`${baseUrl}/users/export-excel?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -219,7 +219,7 @@ const CustomerList = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `customers_${new Date().getTime()}.xlsx`;
+      a.download = `users_${new Date().getTime()}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -249,15 +249,15 @@ const CustomerList = () => {
       return actualDigits.length === 10;
     });
     for (const c of toImport) {
-      try { await apiFetch('/customers', { method: 'POST', body: JSON.stringify(c) }); } catch {}
+      try { await apiFetch('/users', { method: 'POST', body: JSON.stringify(c) }); } catch {}
     }
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    fetchCustomers(search, 1);
+    fetchUsers(search, 1);
   };
 
-  const openEdit = (c: Customer) => {
-    setEditingCustomer(c);
+  const openEdit = (c: User) => {
+    setEditingUser(c);
     setForm({ name: c.name, phone: formatPhone(c.phone), email: c.email, tags: c.tags, group: c.group?._id ?? '', notes: c.notes, tagInput: '' });
     setErrors({});
     setIsDrawerOpen(true);
@@ -270,20 +270,20 @@ const CustomerList = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Customers</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Users</h2>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search customers..."
+              placeholder="Search users..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
             />
           </div>
-          <Link href="/customers/groups" className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
-            <Users className="w-4 h-4" /> Customer Groups
+          <Link href="/users/groups" className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+            <Users className="w-4 h-4" /> User Groups
           </Link>
           <button onClick={() => setExportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
             <Download className="w-4 h-4" /> Export
@@ -294,7 +294,7 @@ const CustomerList = () => {
           </button>
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
           <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200">
-            <Plus className="w-4 h-4" /> Add New Customer
+            <Plus className="w-4 h-4" /> Add New User
           </button>
         </div>
       </div>
@@ -315,46 +315,46 @@ const CustomerList = () => {
           <tbody className="divide-y divide-gray-50">
             {loading ? (
               <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">Loading...</td></tr>
-            ) : customers.length === 0 ? (
-              <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">No customers found</td></tr>
-            ) : customers.map((customer) => (
-              <tr key={customer._id} className="hover:bg-gray-50 transition-colors">
+            ) : users.length === 0 ? (
+              <tr><td colSpan={6} className="px-8 py-16 text-center text-sm text-gray-400">No users found</td></tr>
+            ) : users.map((user) => (
+              <tr key={user._id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100">
-                      {customer.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                      {user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{customer.name}</p>
-                      <p className="text-xs text-gray-400">{customer.email}</p>
+                      <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-8 py-5 text-sm font-medium text-gray-600">{customer.phone}</td>
+                <td className="px-8 py-5 text-sm font-medium text-gray-600">{user.phone}</td>
                 <td className="px-8 py-5">
-                  {customer.group ? (
+                  {user.group ? (
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-1 rounded-lg w-fit">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: customer.group.color }} />
-                      {customer.group.name}
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: user.group.color }} />
+                      {user.group.name}
                     </span>
                   ) : <span className="text-xs text-gray-300">—</span>}
                 </td>
                 <td className="px-8 py-5">
                   <div className="flex gap-2 flex-wrap">
-                    {customer.tags.map((tag, i) => (
+                    {user.tags.map((tag, i) => (
                       <span key={i} className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${tagColors[tag] ?? 'bg-gray-100 text-gray-500'}`}>{tag}</span>
                     ))}
                   </div>
                 </td>
                 <td className="px-8 py-5 text-sm font-medium text-gray-500">
-                  {new Date(customer.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </td>
                 <td className="px-8 py-5 text-right">
                   <button
                     onClick={e => {
                       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                       setMenuPos({ top: rect.bottom + window.scrollY + 4, left: rect.right + window.scrollX - 144 });
-                      setOpenMenuId(openMenuId === customer._id ? null : customer._id);
+                      setOpenMenuId(openMenuId === user._id ? null : user._id);
                     }}
                     className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
                     <MoreHorizontal className="w-5 h-5" />
@@ -370,7 +370,7 @@ const CustomerList = () => {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <p className="text-sm text-gray-400">
-            Showing <span className="font-semibold text-gray-700">{(pagination.currentPage - 1) * pagination.limit + 1}</span>–<span className="font-semibold text-gray-700">{Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)}</span> of <span className="font-semibold text-gray-700">{pagination.totalRecords}</span> customers
+            Showing <span className="font-semibold text-gray-700">{(pagination.currentPage - 1) * pagination.limit + 1}</span>–<span className="font-semibold text-gray-700">{Math.min(pagination.currentPage * pagination.limit, pagination.totalRecords)}</span> of <span className="font-semibold text-gray-700">{pagination.totalRecords}</span> users
           </p>
           <div className="flex items-center gap-1">
             <button
@@ -423,7 +423,7 @@ const CustomerList = () => {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-[70] flex flex-col">
               <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{editingUser ? 'Edit User' : 'Add New User'}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Fill in the details below</p>
                 </div>
                 <button onClick={() => setIsDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
@@ -458,7 +458,7 @@ const CustomerList = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer Group</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User Group</label>
                   <div className="relative">
                     <button type="button" onClick={() => setGroupDropdownOpen(o => !o)}
                       className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none text-left flex items-center justify-between border border-transparent">
@@ -482,7 +482,7 @@ const CustomerList = () => {
                               <span className="flex items-center gap-3">
                                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
                                 <span className="font-medium">{g.name}</span>
-                                <span className="text-xs text-gray-400">{g.count} customers</span>
+                                <span className="text-xs text-gray-400">{g.count} users</span>
                               </span>
                               {form.group === g._id && <Check className="w-4 h-4 text-emerald-500" />}
                             </button>
@@ -512,7 +512,7 @@ const CustomerList = () => {
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Internal Notes</label>
-                  <textarea rows={3} placeholder="Add some context about this customer..." value={form.notes}
+                  <textarea rows={3} placeholder="Add some context about this user..." value={form.notes}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                     className="w-full px-4 py-3 bg-gray-50 border-transparent border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none" />
                 </div>
@@ -521,7 +521,7 @@ const CustomerList = () => {
               <div className="px-8 py-6 border-t border-gray-100 flex gap-4">
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 disabled:opacity-70">
-                  {saving ? 'Saving...' : editingCustomer ? 'Save Changes' : 'Save Customer'}
+                  {saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Save User'}
                 </button>
                 <button onClick={() => setIsDrawerOpen(false)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all">
                   Cancel
@@ -535,8 +535,8 @@ const CustomerList = () => {
       {/* Floating action menu */}
       <AnimatePresence>
         {openMenuId && (() => {
-          const customer = customers.find(c => c._id === openMenuId);
-          if (!customer) return null;
+          const user = users.find(c => c._id === openMenuId);
+          if (!user) return null;
           return (
             <motion.div
               ref={menuRef}
@@ -546,10 +546,10 @@ const CustomerList = () => {
               style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
               className="bg-white border border-gray-100 rounded-2xl shadow-xl z-[200] overflow-hidden w-36"
             >
-              <button onClick={() => openEdit(customer)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+              <button onClick={() => openEdit(user)} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
                 <Pencil className="w-4 h-4" /> Edit
               </button>
-              <button onClick={() => { setDeleteId(customer._id); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors">
+              <button onClick={() => { setDeleteId(user._id); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 className="w-4 h-4" /> Delete
               </button>
             </motion.div>
@@ -567,7 +567,7 @@ const CustomerList = () => {
               <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
                 <Trash2 className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Customer?</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete User?</h3>
               <p className="text-sm text-gray-400 mb-8">This action cannot be undone.</p>
               <div className="flex gap-4">
                 <button onClick={() => handleDelete(deleteId)} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-all">Delete</button>
@@ -585,7 +585,7 @@ const CustomerList = () => {
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2rem] shadow-2xl z-[70] p-8 w-[400px]">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Export Customers</h3>
+                <h3 className="text-xl font-bold text-gray-900">Export Users</h3>
                 <button onClick={() => setExportModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
@@ -599,7 +599,7 @@ const CustomerList = () => {
                     onChange={(e) => setExportGroupId(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    <option value="">All Customers</option>
+                    <option value="">All Users</option>
                     {groups.map(g => (
                       <option key={g._id} value={g._id}>{g.name}</option>
                     ))}
@@ -629,4 +629,4 @@ const CustomerList = () => {
 };
 
 
-export default CustomerList;
+export default UserList;

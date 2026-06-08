@@ -9,7 +9,7 @@ import { apiFetch } from '@/lib/api';
 
 const emptyForm = { name: '', description: '', color: COLORS[0] };
 
-export default function CustomerGroupsPage() {
+export default function UserGroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [search, setSearch] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function CustomerGroupsPage() {
     if (q) params.set('search', q);
     params.set('page', String(p));
     params.set('limit', '9');
-    const data = await apiFetch(`/customer-groups?${params.toString()}`);
+    const data = await apiFetch(`/user-groups?${params.toString()}`);
     setGroups(data.data ?? []);
     if (data.pagination) setPagination(data.pagination);
   };
@@ -69,9 +69,9 @@ export default function CustomerGroupsPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     if (editingGroup) {
-      await apiFetch(`/customer-groups/${editingGroup._id}`, { method: 'PUT', body: JSON.stringify(form) });
+      await apiFetch(`/user-groups/${editingGroup._id}`, { method: 'PUT', body: JSON.stringify(form) });
     } else {
-      await apiFetch('/customer-groups', { method: 'POST', body: JSON.stringify(form) });
+      await apiFetch('/user-groups', { method: 'POST', body: JSON.stringify(form) });
     }
     setSaving(false);
     setIsDrawerOpen(false);
@@ -79,7 +79,7 @@ export default function CustomerGroupsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await apiFetch(`/customer-groups/${id}`, { method: 'DELETE' });
+    await apiFetch(`/user-groups/${id}`, { method: 'DELETE' });
     setDeleteId(null);
     const newPage = groups.length === 1 && page > 1 ? page - 1 : page;
     setPage(newPage);
@@ -97,11 +97,11 @@ export default function CustomerGroupsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Customer Groups</h2>
+          <h2 className="text-2xl font-bold text-gray-900">User Groups</h2>
           <p className="text-sm text-gray-400">{pagination.totalRecords} groups total</p>
         </div>
-        <Link href="/customers" className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
-          <ArrowLeft className="w-4 h-4" /> Back to Customers
+        <Link href="/users" className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+          <ArrowLeft className="w-4 h-4" /> Back to Users
         </Link>
       </div>
 
@@ -143,7 +143,7 @@ export default function CustomerGroupsPage() {
 
               <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
                 <span className="text-2xl font-bold text-gray-900">{group.count}</span>
-                <span className="text-xs font-medium text-gray-400">customers</span>
+                <span className="text-xs font-medium text-gray-400">users</span>
               </div>
               <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((group.count / 100) * 100, 100)}%`, backgroundColor: group.color }} />

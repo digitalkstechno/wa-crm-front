@@ -9,7 +9,7 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-displa
 
 export const metadata: Metadata = {
   title: 'WA CRM - Reminder Suite',
-  description: 'A powerful WhatsApp CRM for managing customers, reminders, and message templates.',
+  description: 'A powerful WhatsApp CRM for managing users, reminders, and message templates.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

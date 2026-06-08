@@ -28,7 +28,7 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'customers', label: 'Customers', icon: Users },
+    { id: 'users', label: 'Users', icon: Users },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },

@@ -30,11 +30,11 @@ type ReminderStatus = "Scheduled" | "Pending" | "Sent" | "Failed";
 
 interface Reminder {
   _id: string;
-  customerName?: string;
-  customer?: { _id: string; name: string; phone?: string };
-  customers?: { _id: string; name: string; phone?: string }[];
+  userName?: string;
+  user?: { _id: string; name: string; phone?: string };
+  users?: { _id: string; name: string; phone?: string }[];
   groups?: { _id: string; name: string }[];
-  recipientType?: "new" | "customers" | "groups";
+  recipientType?: "new" | "users" | "groups";
   title: string;
   reminderName?: string;
   scheduledAt: string;
@@ -93,7 +93,7 @@ type Group = {
   members?: { _id: string; name: string; phone: string }[];
 };
 
-type RecipientType = "new" | "customers" | "groups";
+type RecipientType = "new" | "users" | "groups";
 
 const formatPhone = (val: string) => {
   if (!val) return '+91 ';
@@ -156,12 +156,12 @@ const ReminderList = () => {
     
     setNewPhone(formatted);
   };
-  // Customers
+  // Users
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
-  const [customerSearch, setCustomerSearch] = useState<Record<string, string>>(
+  const [userSearch, setUserSearch] = useState<Record<string, string>>(
     {},
   );
-  const [selectedCustomers, setSelectedCustomers] = useState<
+  const [selectedUsers, setSelectedUsers] = useState<
     { id: string; name: string; phone: string }[]
   >([]);
   // Groups
@@ -194,10 +194,10 @@ const ReminderList = () => {
     "",
   );
   //search
-  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   const [reminderSearchQuery, setReminderSearchQuery] = useState("");
   //filter
-  const [filterType, setFilterType] = useState<"customer" | "reminder" | "">(
+  const [filterType, setFilterType] = useState<"user" | "reminder" | "">(
     "",
   );
   const [filterValue, setFilterValue] = useState("");
@@ -243,7 +243,7 @@ const ReminderList = () => {
   const fetchDependencies = async () => {
     try {
       const [gData, tData] = await Promise.all([
-        apiFetch("/customer-groups/all"),
+        apiFetch("/user-groups/all"),
         apiFetch("/templates"),
       ]);
       setGroups(gData.data || []);
@@ -270,9 +270,9 @@ const ReminderList = () => {
     setRecipientType(null);
     setNewName("");
     setNewPhone("+91 ");
-    setCustomerSearch({});
+    setUserSearch({});
     setExpandedGroup(null);
-    setSelectedCustomers([]);
+    setSelectedUsers([]);
     setSelectedGroups([]);
     setReminderName("");
     setSelectedTemplate(null);
@@ -292,8 +292,8 @@ const ReminderList = () => {
     setInlineTemplateBody("");
   };
 
-  const toggleCustomer = (c: { id: string; name: string; phone: string }) => {
-    setSelectedCustomers((prev) =>
+  const toggleUser = (c: { id: string; name: string; phone: string }) => {
+    setSelectedUsers((prev) =>
       prev.find((x) => x.id === c.id)
         ? prev.filter((x) => x.id !== c.id)
         : [...prev, c],
@@ -313,22 +313,22 @@ const ReminderList = () => {
       const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
       return newName.trim() !== "" && newPhone.trim() !== "" && actualDigits.length === 10;
     }
-    if (recipientType === "customers") return selectedCustomers.length > 0;
+    if (recipientType === "users") return selectedUsers.length > 0;
     if (recipientType === "groups") return selectedGroups.length > 0;
     return false;
   })();
   const step3Valid =
     selectedTemplate !== null && schedDate !== "" && schedTime !== "";
 
-  const allCustomerNames = Array.from(
+  const allUserNames = Array.from(
     new Set(
       reminders
         .map((r) => {
-          if (r.recipientType === "customers" && r.customers?.length)
-            return r.customers.map((c) => c.name).join(", ");
+          if (r.recipientType === "users" && r.users?.length)
+            return r.users.map((c) => c.name).join(", ");
           if (r.recipientType === "groups" && r.groups?.length)
             return r.groups.map((g) => g.name).join(", ");
-          return r.customer?.name || r.newName || "";
+          return r.user?.name || r.newName || "";
         })
         .filter(Boolean),
     ),
@@ -339,16 +339,16 @@ const ReminderList = () => {
   );
 
   const filtered = reminders.filter((r) => {
-    const matchesCustomer = (() => {
-      if (!customerSearchQuery) return true;
+    const matchesUser = (() => {
+      if (!userSearchQuery) return true;
       const cname = (() => {
-        if (r.recipientType === "customers" && r.customers?.length)
-          return r.customers.map((c) => c.name).join(", ");
+        if (r.recipientType === "users" && r.users?.length)
+          return r.users.map((c) => c.name).join(", ");
         if (r.recipientType === "groups" && r.groups?.length)
           return r.groups.map((g) => g.name).join(", ");
-        return r.customer?.name || r.newName || "";
+        return r.user?.name || r.newName || "";
       })();
-      return cname.toLowerCase().includes(customerSearchQuery.toLowerCase());
+      return cname.toLowerCase().includes(userSearchQuery.toLowerCase());
     })();
 
     const matchesReminder = (() => {
@@ -357,7 +357,7 @@ const ReminderList = () => {
       return rname.toLowerCase().includes(reminderSearchQuery.toLowerCase());
     })();
 
-    return matchesCustomer && matchesReminder;
+    return matchesUser && matchesReminder;
   });
 
   const handleEdit = async (reminder: Reminder) => {
@@ -371,8 +371,8 @@ const ReminderList = () => {
       setRecipientType(r.recipientType || "new");
       setNewName(r.newName || "");
       setNewPhone(formatPhone(r.newPhone || ""));
-      setSelectedCustomers(
-        r.customers?.map((c: any) => ({
+      setSelectedUsers(
+        r.users?.map((c: any) => ({
           id: c._id,
           name: c.name,
           phone: c.phone || "",
@@ -473,7 +473,7 @@ const ReminderList = () => {
         newName: full.newName,
         newPhone: full.newPhone,
 
-        customers: full.customers?.map((c: any) => c._id || c) || [],
+        users: full.users?.map((c: any) => c._id || c) || [],
         groups: full.groups?.map((g: any) => g._id || g) || [],
         repeat: full.repeat,
       };
@@ -500,18 +500,18 @@ const ReminderList = () => {
 
     const formatRows = (data: Reminder[]) =>
       data.map((r) => {
-        const customerName = (() => {
-          if (r.recipientType === "customers" && r.customers?.length)
-            return r.customers.map((c) => c.name).join(", ");
+        const userName = (() => {
+          if (r.recipientType === "users" && r.users?.length)
+            return r.users.map((c) => c.name).join(", ");
           if (r.recipientType === "groups" && r.groups?.length)
             return r.groups.map((g) => g.name).join(", ");
-          return r.customer?.name || r.newName || "—";
+          return r.user?.name || r.newName || "—";
         })();
 
         const phone = (() => {
           if (r.recipientType === "new") return r.newPhone || "—";
-          if (r.recipientType === "customers" && r.customers?.length === 1)
-            return r.customers[0].phone || "—";
+          if (r.recipientType === "users" && r.users?.length === 1)
+            return r.users[0].phone || "—";
           return "—";
         })();
 
@@ -519,7 +519,7 @@ const ReminderList = () => {
 
         return {
           "Reminder Name": r.reminderName || r.title || "—",
-          "Customer": customerName,
+          "User": userName,
           "Phone": phone,
           "Template": typeof r.template === "object" ? r.template?.name || "—" : "—",
           "Scheduled Date": d.toLocaleDateString(),
@@ -621,17 +621,17 @@ const ReminderList = () => {
           <Download className="w-4 h-4" />
          Excel
         </button>
-          {/* Customer Search Box */}
+          {/* User Search Box */}
           <div className="flex items-center bg-white border border-gray-100 shadow-sm overflow-hidden">
             <div className="bg-emerald-500 text-white text-xs font-bold ml-1 px-3 py-2.5 whitespace-nowrap">
-              Customer
+              User
             </div>
             <div className="relative border-l border-gray-100">
               <input
                 type="text"
-                placeholder="Search customer"
-                value={customerSearchQuery}
-                onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                placeholder="Search user"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
                 className="pl-4 py-2.5 text-sm focus:outline-none w-36"
               />
             </div>
@@ -738,13 +738,13 @@ const ReminderList = () => {
           <div className="divide-y divide-gray-50">
             {filtered.map((reminder) => {
               const s = statusConfig[reminder.status] || statusConfig.Scheduled;
-              const customerName = (() => {
+              const userName = (() => {
                 if (
-                  reminder.recipientType === "customers" &&
-                  reminder.customers &&
-                  reminder.customers.length > 0
+                  reminder.recipientType === "users" &&
+                  reminder.users &&
+                  reminder.users.length > 0
                 ) {
-                  const names = reminder.customers.map((c) => c.name);
+                  const names = reminder.users.map((c) => c.name);
                   return names.length <= 2
                     ? names.join(", ")
                     : `${names[0]}, ${names[1]} +${names.length - 2}`;
@@ -760,7 +760,7 @@ const ReminderList = () => {
                     : `${names[0]}, ${names[1]} +${names.length - 2}`;
                 }
                 return (
-                  reminder.customer?.name || reminder.newName || reminder.title
+                  reminder.user?.name || reminder.newName || reminder.title
                 );
               })();
               const dateObj = new Date(reminder.scheduledAt);
@@ -772,7 +772,7 @@ const ReminderList = () => {
                   {/* Left: avatar + info */}
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100 shrink-0">
-                      {customerName
+                      {userName
                         .split(" ")
                         .map((w) => w[0])
                         .join("")
@@ -785,7 +785,7 @@ const ReminderList = () => {
                       </h4>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <User className="w-3 h-3" /> {customerName}
+                          <User className="w-3 h-3" /> {userName}
                         </span>
                         {reminder.recipientType === "new" &&
                           reminder.newPhone && (
@@ -797,15 +797,15 @@ const ReminderList = () => {
                               </span>
                             </>
                           )}
-                        {reminder.recipientType === "customers" &&
-                          reminder.customers &&
-                          reminder.customers.length === 1 &&
-                          reminder.customers[0].phone && (
+                        {reminder.recipientType === "users" &&
+                          reminder.users &&
+                          reminder.users.length === 1 &&
+                          reminder.users[0].phone && (
                             <>
                               <span className="w-1 h-1 bg-gray-200 rounded-full" />
                               <span className="flex items-center gap-1 text-xs text-gray-400">
                                 <Phone className="w-3 h-3" />{" "}
-                                {reminder.customers[0].phone}
+                                {reminder.users[0].phone}
                               </span>
                             </>
                           )}
@@ -979,10 +979,10 @@ const ReminderList = () => {
                     desc: "Enter a name and phone number manually",
                   },
                   {
-                    type: "customers" as RecipientType,
+                    type: "users" as RecipientType,
                     icon: Users,
-                    label: "Customers",
-                    desc: "Pick from existing customers by group",
+                    label: "Users",
+                    desc: "Pick from existing users by group",
                   },
                   {
                     type: "groups" as RecipientType,
@@ -1058,18 +1058,18 @@ const ReminderList = () => {
                   </div>
                 )}
 
-                {recipientType === "customers" && (
+                {recipientType === "users" && (
                   <div className="space-y-2">
-                    {selectedCustomers.length > 0 && (
+                    {selectedUsers.length > 0 && (
                       <p className="text-xs font-bold text-emerald-600 mb-3">
-                        {selectedCustomers.length} customer
-                        {selectedCustomers.length > 1 ? "s" : ""} selected
+                        {selectedUsers.length} user
+                        {selectedUsers.length > 1 ? "s" : ""} selected
                       </p>
                     )}
                     <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                       {groups.map((group) => {
                         const groupSearch = (
-                          customerSearch[group._id] || ""
+                          userSearch[group._id] || ""
                         ).toLowerCase();
                         const filteredMembers = groupSearch
                           ? group.members?.filter(
@@ -1116,10 +1116,10 @@ const ReminderList = () => {
                                   <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
                                   <input
                                     type="text"
-                                    placeholder="Search customers..."
-                                    value={customerSearch[group._id] || ""}
+                                    placeholder="Search users..."
+                                    value={userSearch[group._id] || ""}
                                     onChange={(e) =>
-                                      setCustomerSearch((prev) => ({
+                                      setUserSearch((prev) => ({
                                         ...prev,
                                         [group._id]: e.target.value,
                                       }))
@@ -1132,14 +1132,14 @@ const ReminderList = () => {
                                   filteredMembers.length > 0 ? (
                                     filteredMembers.map((member) => {
                                       const isSelected =
-                                        !!selectedCustomers.find(
+                                        !!selectedUsers.find(
                                           (x) => x.id === member._id,
                                         );
                                       return (
                                         <button
                                           key={member._id}
                                           onClick={() =>
-                                            toggleCustomer({
+                                            toggleUser({
                                               id: member._id,
                                               name: member.name,
                                               phone: member.phone,
@@ -1175,7 +1175,7 @@ const ReminderList = () => {
                                     })
                                   ) : (
                                     <p className="text-xs text-gray-400 text-center py-3 italic">
-                                      No customers found
+                                      No users found
                                     </p>
                                   )}
                                 </div>
@@ -1740,7 +1740,7 @@ const ReminderList = () => {
                         scheduledAt: new Date(`${schedDate}T${schedTime}`),
                         newName,
                         newPhone,
-                        customers: selectedCustomers.map((c) => c.id),
+                        users: selectedUsers.map((c) => c.id),
                         groups: selectedGroups,
                         repeat: {
                           enabled: repeatEnabled,
@@ -1824,10 +1824,10 @@ const ReminderList = () => {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                   Recipients
                 </label>
-                {viewingReminder.recipientType === "customers" &&
-                viewingReminder.customers &&
-                viewingReminder.customers.length > 0 ? (
-                  viewingReminder.customers.map((c) => (
+                {viewingReminder.recipientType === "users" &&
+                viewingReminder.users &&
+                viewingReminder.users.length > 0 ? (
+                  viewingReminder.users.map((c) => (
                     <div
                       key={c._id}
                       className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-gray-100"
@@ -1864,7 +1864,7 @@ const ReminderList = () => {
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100">
                         {(
-                          viewingReminder.customer?.name ||
+                          viewingReminder.user?.name ||
                           viewingReminder.newName ||
                           "?"
                         )
@@ -1875,14 +1875,14 @@ const ReminderList = () => {
                           .slice(0, 2)}
                       </div>
                       <span className="text-sm font-bold text-gray-900">
-                        {viewingReminder.customer?.name ||
+                        {viewingReminder.user?.name ||
                           viewingReminder.newName ||
                           "N/A"}
                       </span>
                     </div>
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
                       <Phone className="w-3 h-3" />
-                      {viewingReminder.customer?.phone ||
+                      {viewingReminder.user?.phone ||
                         viewingReminder.newPhone ||
                         "N/A"}
                     </span>
