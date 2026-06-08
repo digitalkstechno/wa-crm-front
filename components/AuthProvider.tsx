@@ -3,15 +3,16 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-type User = {
+type staff = {
   _id: string;
   fullName: string;
   email: string;
+  phone?: string;
 };
 
 type AuthContextType = {
   isLoggedIn: boolean;
-  user: User | null;
+  staff: staff | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -21,16 +22,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [staff, setstaff] = useState<staff | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem('wa_crm_token');
-    const storedUser = localStorage.getItem('wa_crm_user');
-    if (token && storedUser) {
+    const storedstaff = localStorage.getItem('wa_crm_staff');
+    if (token && storedstaff) {
       setIsLoggedIn(true);
-      setUser(JSON.parse(storedUser));
+      setstaff(JSON.parse(storedstaff));
     }
     setLoading(false);
   }, []);
@@ -46,9 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return { success: false, message: data.message || 'Login failed' };
 
       localStorage.setItem('wa_crm_token', data.token);
-      localStorage.setItem('wa_crm_user', JSON.stringify(data.data));
+      localStorage.setItem('wa_crm_staff', JSON.stringify(data.data));
       setIsLoggedIn(true);
-      setUser(data.data);
+      setstaff(data.data);
       return { success: true };
     } catch {
       return { success: false, message: 'Network error. Please try again.' };
@@ -57,14 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('wa_crm_token');
-    localStorage.removeItem('wa_crm_user');
+    localStorage.removeItem('wa_crm_staff');
     setIsLoggedIn(false);
-    setUser(null);
+    setstaff(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, staff, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

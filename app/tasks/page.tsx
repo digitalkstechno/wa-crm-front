@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/api';
 interface TaskStatus { _id: string; name: string; color: string; order: number; }
 interface TaskType { _id: string; name: string; color: string; }
 interface Staff { _id: string; fullName: string; email: string; }
-interface CustomerUser { _id: string; name: string; email: string; phone: string; }
+interface CustomerCustomer { _id: string; name: string; email: string; phone: string; }
 
 interface Task {
   _id: string;
@@ -17,7 +17,7 @@ interface Task {
   type?: TaskType;
   status: TaskStatus;
   
-  customer?: CustomerUser;
+  customer?: CustomerCustomer;
   
   assignedTo: Staff | null;
   assignedRM?: Staff | null;
@@ -42,7 +42,7 @@ export default function TasksPage() {
   const [statuses, setStatuses] = useState<TaskStatus[]>([]);
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [usersList, setUsersList] = useState<CustomerUser[]>([]);
+  const [customersList, setCustomersList] = useState<CustomerCustomer[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal
@@ -64,18 +64,18 @@ export default function TasksPage() {
 
   const fetchData = async () => {
     try {
-      const [taskRes, statusRes, typeRes, staffRes, userRes] = await Promise.all([
+      const [taskRes, statusRes, typeRes, staffRes, customerRes] = await Promise.all([
         apiFetch('/tasks'),
         apiFetch('/task-status'),
         apiFetch('/task-type'),
         apiFetch('/staff'),
-        apiFetch('/users')
+        apiFetch('/customers')
       ]);
       setTasks(taskRes.data || []);
       setStatuses(statusRes.data || []);
       setTaskTypes(typeRes.data || []);
       setStaff(staffRes.data || []);
-      setUsersList(userRes.data || []);
+      setCustomersList(customerRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -361,7 +361,7 @@ export default function TasksPage() {
                 <thead className="bg-gray-50/80 sticky top-0 backdrop-blur-sm z-10">
                   <tr>
                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Task ID</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Title & User</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Title & Customer</th>
                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Type</th>
                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Status</th>
                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">Priority</th>
@@ -484,14 +484,14 @@ export default function TasksPage() {
                     </div>
                   </div>
 
-                  {/* Section: User Info */}
+                  {/* Section: Customer Info */}
                   <div className="space-y-4 pt-2">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">User Information</h4>
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Customer Information</h4>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User Name</label>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer Name</label>
                       <select value={form.customer} onChange={e => setForm({ ...form, customer: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none">
-                        <option value="">No User Linked</option>
-                        {usersList.map(u => <option key={u._id} value={u._id}>{u.name} {u.phone ? `- ${u.phone}` : `(${u.email})`}</option>)}
+                        <option value="">No Customer Linked</option>
+                        {customersList.map(u => <option key={u._id} value={u._id}>{u.name} {u.phone ? `- ${u.phone}` : `(${u.email})`}</option>)}
                       </select>
                     </div>
                   </div>

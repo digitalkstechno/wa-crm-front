@@ -19,7 +19,7 @@ const formatPhone = (val: string) => {
 };
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { staff } = useAuth();
 
   const [profile, setProfile] = useState({ fullName: '', email: '', phone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -68,9 +68,11 @@ export default function SettingsPage() {
       const d = res.data;
       setProfile({ fullName: d.fullName || '', email: d.email || '', phone: formatPhone(d.phone || '') });
     }).catch(() => {
-      if (user) setProfile({ fullName: user.fullName || '', email: user.email || '', phone: '' });
+      if (staff) {
+        setProfile({ fullName: staff.fullName || '', email: staff.email || '', phone: staff.phone || '' });
+      }
     });
-  }, []);
+  }, [staff]);
 
   const handleProfileSave = async () => {
     if (!profile.fullName.trim() || !profile.email.trim()) {

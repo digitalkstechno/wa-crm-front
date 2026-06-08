@@ -14,7 +14,7 @@ type Staff = {
 };
 
 export default function StaffManagement() {
-  const { user } = useAuth();
+  const { staff } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -181,37 +181,37 @@ export default function StaffManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {staffList.map((staff) => (
-                  <tr key={staff._id} className="hover:bg-gray-50/50 transition-colors">
+                {staffList.map((member) => (
+                  <tr key={member._id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
-                          {staff.fullName.charAt(0).toUpperCase()}
+                          {member.fullName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-gray-900">{staff.fullName}</p>
-                          {user?._id === staff._id && (
+                          <p className="text-sm font-bold text-gray-900">{member.fullName}</p>
+                          {staff?._id === member._id && (
                             <span className="inline-block px-2 py-0.5 mt-1 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold">You</span>
                           )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{staff.email}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{staff.phone || 'No phone'}</p>
+                      <p className="text-sm text-gray-900">{member.email}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{member.phone || 'No phone'}</p>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handleOpenModal('edit', staff)}
+                          onClick={() => handleOpenModal('edit', member)}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(staff._id)}
-                          disabled={user?._id === staff._id}
+                          onClick={() => handleDelete(member._id)}
+                          disabled={staff?._id === member._id}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
                           title="Delete"
                         >

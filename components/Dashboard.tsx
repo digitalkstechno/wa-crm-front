@@ -28,7 +28,7 @@ import { apiFetch } from "@/lib/api";
 
 interface DashboardData {
   stats: {
-    totalUsers: number;
+    totalCustomers: number;
     totalTasks: number;
     pendingTasks: number;
     activeReminders: number;
@@ -48,7 +48,7 @@ interface DashboardData {
     statusColor: string;
     priority: string;
     dueDate: string;
-    userName: string;
+    customerName: string;
     assignee: string;
   }[];
 }
@@ -91,8 +91,8 @@ const Dashboard = () => {
   const stats = data
     ? [
         {
-          label: "Total Users",
-          value: data.stats.totalUsers.toLocaleString(),
+          label: "Total Customers",
+          value: data.stats.totalCustomers.toLocaleString(),
           icon: Users,
           color: "bg-purple-50 text-purple-600",
         },
@@ -317,7 +317,7 @@ const Dashboard = () => {
             <thead>
               <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
                 <th className="px-8 py-4">Task ID</th>
-                <th className="px-8 py-4">Title & User</th>
+                <th className="px-8 py-4">Title & Customer</th>
                 <th className="px-8 py-4">Status</th>
                 <th className="px-8 py-4">Priority</th>
                 <th className="px-8 py-4">Due Date</th>
@@ -348,7 +348,7 @@ const Dashboard = () => {
                         <p className="font-semibold text-gray-900 text-sm max-w-[200px] truncate">{task.title}</p>
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                           <User className="w-3 h-3" />
-                          <span className="truncate max-w-[180px]">{task.userName}</span>
+                          <span className="truncate max-w-[180px]">{task.customerName}</span>
                         </div>
                       </td>
                       <td className="px-8 py-4">

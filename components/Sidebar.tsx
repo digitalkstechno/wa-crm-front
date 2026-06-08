@@ -28,21 +28,21 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
-  const { logout, user } = useAuth();
+  const { logout, staff } = useAuth();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const pathname = usePathname();
 
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'users', label: 'Users', icon: Users },
+    { id: 'customers', label: 'Customers', icon: Users },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const initials = user?.fullName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
+  const initials = staff?.fullName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   return (
     <div className={cn(
@@ -185,11 +185,11 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
         })}
       </nav>
 
-      {/* User + Logout */}
+      {/* Customer + Logout */}
       <div className={cn('p-3 border-t border-gray-100 space-y-2', collapsed && 'flex flex-col items-center')}>
         {collapsed ? (
           <>
-            <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center" title={user?.fullName}>
+            <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center" title={staff?.fullName}>
               <span className="text-white text-xs font-bold">{initials}</span>
             </div>
             <button
@@ -207,8 +207,8 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
                 <span className="text-white text-xs font-bold">{initials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'User'}</p>
-                <p className="text-[10px] text-gray-400 truncate">{user?.email || ''}</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{staff?.fullName || 'Staff'}</p>
+                <p className="text-[10px] text-gray-400 truncate">{staff?.email || ''}</p>
               </div>
             </div>
             <button
