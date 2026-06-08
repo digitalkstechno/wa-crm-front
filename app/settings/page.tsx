@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Save, Eye, EyeOff, Check } from 'lucide-react';
+import { User, Lock, Save, Eye, EyeOff, Check, Users } from 'lucide-react';
+import StaffManagement from '@/components/StaffManagement';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
-type Tab = 'profile' | 'password';
+type Tab = 'profile' | 'password' | 'staff';
 type Toast = { type: 'success' | 'error'; message: string } | null;
 
 const formatPhone = (val: string) => {
@@ -132,6 +133,7 @@ export default function SettingsPage() {
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'profile', label: 'Profile', icon: User },
     { key: 'password', label: 'Change Password', icon: Lock },
+    { key: 'staff', label: 'Staff Management', icon: Users },
   ];
 
   return (
@@ -292,6 +294,10 @@ export default function SettingsPage() {
                 {savingPassword ? 'Updating...' : 'Update Password'}
               </button>
             </div>
+          )}
+
+          {activeTab === 'staff' && (
+            <StaffManagement />
           )}
         </div>
       </div>
