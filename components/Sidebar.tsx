@@ -13,7 +13,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -25,6 +28,9 @@ interface SidebarProps {
 
 const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
   const { logout, user } = useAuth();
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const pathname = usePathname();
+
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -81,26 +87,81 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
 
       {/* Nav */}
       <nav className="flex-1 px-2 mt-3 space-y-1">
-        {menuItems.map((item) => (
-          <Link
-            key={item.id}
-            href={item.id === 'dashboard' ? '/' : `/${item.id}`}
-            title={collapsed ? item.label : undefined}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
-              collapsed ? 'justify-center' : '',
-              activeTab === item.id
-                ? 'bg-emerald-50 text-emerald-600 shadow-sm'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-            )}
-          >
-            <item.icon className={cn(
-              'w-5 h-5 shrink-0 transition-colors',
-              activeTab === item.id ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
-            )} />
-            {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
-          </Link>
-        ))}
+        {menuItems.map((item) => {
+          if (item.id === 'settings') {
+            const isProfileActive = pathname === '/settings';
+            const isStaffActive = pathname === '/settings/staff';
+            return (
+              <div key={item.id} className="space-y-1">
+                <button
+                  onClick={() => setSettingsOpen(!settingsOpen)}
+                  title={collapsed ? item.label : undefined}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group',
+                    collapsed ? 'justify-center' : '',
+                    activeTab === item.id
+                      ? 'bg-emerald-50 text-emerald-600 shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className={cn(
+                      'w-5 h-5 shrink-0 transition-colors',
+                      activeTab === item.id ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
+                    )} />
+                    {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+                  </div>
+                  {!collapsed && (
+                    settingsOpen ? <ChevronUp className="w-4 h-4 text-gray-400 group-hover:text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                  )}
+                </button>
+                {settingsOpen && !collapsed && (
+                  <div className="pl-11 pr-3 space-y-1">
+                    <Link
+                      href="/settings"
+                      className={cn(
+                        "block px-3 py-2 rounded-lg text-sm transition-all",
+                        isProfileActive ? "bg-emerald-50 text-emerald-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      )}
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/settings/staff"
+                      className={cn(
+                        "block px-3 py-2 rounded-lg text-sm transition-all",
+                        isStaffActive ? "bg-emerald-50 text-emerald-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      )}
+                    >
+                      Staff
+                    </Link>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.id}
+              href={item.id === 'dashboard' ? '/' : `/${item.id}`}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group',
+                collapsed ? 'justify-center' : '',
+                activeTab === item.id
+                  ? 'bg-emerald-50 text-emerald-600 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+              )}
+            >
+              <item.icon className={cn(
+                'w-5 h-5 shrink-0 transition-colors',
+                activeTab === item.id ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
+              )} />
+              {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User + Logout */}
