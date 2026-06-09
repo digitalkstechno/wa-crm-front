@@ -104,8 +104,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-3xl">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Manage your account and app configuration</p>
+        <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
+        <p className="text-sm text-gray-500 mt-0.5">Manage your personal account details</p>
       </div>
 
       {toast && (

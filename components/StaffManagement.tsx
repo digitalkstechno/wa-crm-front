@@ -10,12 +10,22 @@ type Staff = {
   fullName: string;
   email: string;
   phone: string;
+  roleType?: string;
+  department?: string;
+  status?: string;
+  firmId?: string | any;
   createdAt: string;
+};
+
+type Firm = {
+  _id: string;
+  name: string;
 };
 
 export default function StaffManagement() {
   const { staff } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [firmList, setFirmList] = useState<Firm[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -28,12 +38,14 @@ export default function StaffManagement() {
   const fetchStaffList = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch('/staff?limit=100');
-      if (res.data) {
-        setStaffList(res.data);
-      }
+      const [staffRes, firmRes] = await Promise.all([
+        apiFetch('/staff?limit=1000'),
+        apiFetch('/firms').catch(() => ({ data: [] }))
+      ]);
+      if (staffRes.data) setStaffList(staffRes.data);
+      if (firmRes.data) setFirmList(firmRes.data);
     } catch (err: any) {
-      showToast('error', err.message || 'Failed to fetch staff');
+      showToast('error', err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -177,50 +189,70 @@ export default function StaffManagement() {
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Role & Firm</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {staffList.map((member) => (
-                  <tr key={member._id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
-                          {member.fullName.charAt(0).toUpperCase()}
+                {staffList.map((member) => {
+                  const firmName = firmList.find(f => f._id === member.firmId)?.name || 'Unassigned';
+                  return (
+                    <tr key={member._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
+                            {member.fullName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{member.fullName}</p>
+                            {staff?._id === member._id && (
+                              <span className="inline-block px-2 py-0.5 mt-1 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold">You</span>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{member.fullName}</p>
-                          {staff?._id === member._id && (
-                            <span className="inline-block px-2 py-0.5 mt-1 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold">You</span>
-                          )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-900">{member.email}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{member.phone || 'No phone'}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-gray-900">{member.roleType || 'Member'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{firmName}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600">{member.department || '-'}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          member.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {member.status || 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenModal('edit', member)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(member._id)}
+                            disabled={staff?._id === member._id}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                            title="Delete"
+                          >
+                            <Trash className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{member.email}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{member.phone || 'No phone'}</p>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleOpenModal('edit', member)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(member._id)}
-                          disabled={staff?._id === member._id}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
-                          title="Delete"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

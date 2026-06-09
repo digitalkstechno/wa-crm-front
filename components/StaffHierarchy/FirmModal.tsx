@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
-export default function FirmModal({ mode, entity, onClose, onSaved, showToast }: any) {
+export default function FirmModal({ mode, entity, superAdmins = [], onClose, onSaved, showToast }: any) {
   const [formData, setFormData] = useState({
-    name: '', code: '', status: 'Active'
+    name: '', code: '', status: 'Active', superAdminId: ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -13,10 +13,11 @@ export default function FirmModal({ mode, entity, onClose, onSaved, showToast }:
       setFormData({
         name: entity.name || '',
         code: entity.code || '',
-        status: entity.status || 'Active'
+        status: entity.status || 'Active',
+        superAdminId: entity.superAdminId || ''
       });
     } else {
-      setFormData({ name: '', code: '', status: 'Active' });
+      setFormData({ name: '', code: '', status: 'Active', superAdminId: '' });
     }
   }, [mode, entity]);
 
@@ -58,6 +59,15 @@ export default function FirmModal({ mode, entity, onClose, onSaved, showToast }:
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Firm Code (Optional)</label>
             <input type="text" value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all" placeholder="e.g. F-001" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Super Admin</label>
+            <select value={formData.superAdminId} onChange={e => setFormData(p => ({ ...p, superAdminId: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all">
+              <option value="">No Super Admin</option>
+              {superAdmins.map((sa: any) => (
+                <option key={sa._id} value={sa._id}>{sa.fullName}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</label>

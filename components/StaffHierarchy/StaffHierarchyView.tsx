@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Plus, Edit, Trash, ChevronRight, ChevronDown, User, Users, Shield, Settings2, Building } from 'lucide-react';
+import { Plus, Edit, Trash, ChevronRight, ChevronDown, User, Users, Shield, Settings2, Building, Crown } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import FirmModal from './FirmModal';
+import SuperAdminModal from './SuperAdminModal';
 import AdminModal from './AdminModal';
 import ManagerModal from './ManagerModal';
 import TeamModal from './TeamModal';
@@ -15,6 +16,7 @@ type Firm = {
   name: string;
   code: string;
   status: string;
+  superAdminId: string | null;
 };
 
 type Staff = {
@@ -51,10 +53,10 @@ export default function StaffHierarchyView() {
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
   // Modals state
-  const [modalType, setModalType] = useState<'firm' | 'admin' | 'manager' | 'team' | 'member' | null>(null);
+  const [modalType, setModalType] = useState<'superadmin' | 'firm' | 'admin' | 'manager' | 'team' | 'member' | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedEntity, setSelectedEntity] = useState<any>(null);
-  const [parentData, setParentData] = useState<{firmId?: string, managerId?: string, teamId?: string}>({});
+  const [parentData, setParentData] = useState<{firmId?: string, managerId?: string, teamId?: string, parentId?: string}>({});
 
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -86,10 +88,13 @@ export default function StaffHierarchyView() {
   };
 
   const toggleNode = (id: string) => {
-    setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpandedNodes(prev => {
+      const currentState = prev[id] !== false; // defaults to true
+      return { ...prev, [id]: !currentState };
+    });
   };
 
-  const openModal = (type: 'firm' | 'admin' | 'manager' | 'team' | 'member', mode: 'create' | 'edit', entity: any = null, parentOpts: any = {}) => {
+  const openModal = (type: 'superadmin' | 'firm' | 'admin' | 'manager' | 'team' | 'member', mode: 'create' | 'edit', entity: any = null, parentOpts: any = {}) => {
     setModalType(type);
     setModalMode(mode);
     setSelectedEntity(entity);
@@ -253,14 +258,14 @@ export default function StaffHierarchyView() {
   };
 
   // Renders a Firm and its Admins/Managers
-  const renderFirm = (firm: Firm) => {
+  const renderFirm = (firm: Firm, level: number = 0) => {
     const isExpanded = expandedNodes[firm._id] !== false;
     const firmAdmins = staffList.filter(s => s.roleType === 'Admin' && s.firmId === firm._id);
     const orphanManagers = staffList.filter(s => s.roleType === 'Manager' && s.firmId === firm._id && !s.parentId);
 
     return (
-      <div key={firm._id} className="w-full mb-4 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-        <div className="flex items-center justify-between p-4 bg-gray-900 text-white cursor-pointer" onClick={() => toggleNode(firm._id)}>
+      <div key={firm._id} className="w-full mb-4 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm" style={{ marginLeft: `${level * 24}px`, width: `calc(100% - ${level * 24}px)` }}>
+        <div className="flex items-center justify-between p-4 bg-gray-800 text-white cursor-pointer" onClick={() => toggleNode(firm._id)}>
           <div className="flex items-center gap-3">
             <Building className="w-5 h-5 text-gray-400" />
             <div>
@@ -277,7 +282,9 @@ export default function StaffHierarchyView() {
             <button onClick={() => openModal('firm', 'edit', firm)} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Edit Firm">
               <Edit className="w-4 h-4" />
             </button>
-            {isExpanded ? <ChevronDown className="w-5 h-5 text-gray-400 ml-2" /> : <ChevronRight className="w-5 h-5 text-gray-400 ml-2" />}
+            <button onClick={() => toggleNode(firm._id)} className="p-1 hover:bg-white/10 rounded-lg ml-1 transition-colors">
+              {isExpanded ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
+            </button>
           </div>
         </div>
         
@@ -297,9 +304,58 @@ export default function StaffHierarchyView() {
     );
   };
 
+  // Renders a Super Admin and their Firms
+  const renderSuperAdmin = (superAdmin: Staff) => {
+    const isExpanded = expandedNodes[superAdmin._id] !== false;
+    const saFirms = firmList.filter(f => f.superAdminId === superAdmin._id);
+
+    return (
+      <div key={superAdmin._id} className="w-full mb-6 bg-white rounded-2xl border-2 border-indigo-100 overflow-hidden shadow-md">
+        <div className="flex items-center justify-between p-5 bg-gradient-to-r from-indigo-900 to-indigo-800 text-white cursor-pointer" onClick={() => toggleNode(superAdmin._id)}>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <Crown className="w-5 h-5 text-indigo-300" />
+            </div>
+            <div>
+              <p className="text-lg font-bold flex items-center gap-2">
+                {superAdmin.fullName}
+                <span className="text-[10px] bg-indigo-500/50 text-indigo-100 px-2.5 py-1 rounded-md uppercase tracking-wider font-bold">Super Admin</span>
+              </p>
+              <p className="text-xs text-indigo-200 mt-0.5">{saFirms.length} Firms managed</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => openModal('firm', 'create', null, { superAdminId: superAdmin._id })} className="p-2 text-white hover:bg-white/10 rounded-xl transition-colors flex items-center gap-1 text-xs font-bold uppercase tracking-wide border border-white/20">
+              <Plus className="w-3.5 h-3.5" /> Firm
+            </button>
+            <button onClick={() => openModal('superadmin', 'edit', superAdmin)} className="p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-colors" title="Edit Super Admin">
+              <Edit className="w-4 h-4" />
+            </button>
+            <button onClick={() => toggleNode(superAdmin._id)} className="p-1 hover:bg-white/10 rounded-lg ml-1 transition-colors">
+              {isExpanded ? <ChevronDown className="w-6 h-6 text-indigo-300" /> : <ChevronRight className="w-6 h-6 text-indigo-300" />}
+            </button>
+          </div>
+        </div>
+        
+        {isExpanded && (
+          <div className="w-full p-4 bg-indigo-50/30">
+            {saFirms.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-sm bg-white rounded-xl border border-gray-100 shadow-sm">No Firms configured under this Super Admin yet.</div>
+            ) : (
+              saFirms.map(firm => renderFirm(firm, 0))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Find staff without a firm or with firmId that doesn't exist anymore
   const firmIds = new Set(firmList.map(f => f._id));
-  const unassignedStaff = staffList.filter(s => !s.firmId || !firmIds.has(s.firmId));
+  const unassignedStaff = staffList.filter(s => s.roleType !== 'Super Admin' && (!s.firmId || !firmIds.has(s.firmId)));
+  
+  const superAdmins = staffList.filter(s => s.roleType === 'Super Admin');
+  const orphanFirms = firmList.filter(f => !f.superAdminId);
 
   return (
     <div className="space-y-6 relative">
@@ -314,30 +370,57 @@ export default function StaffHierarchyView() {
 
       <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
-            <Settings2 className="w-5 h-5 text-emerald-600" />
+          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+            <Settings2 className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-900">Organization Structure</h3>
-            <p className="text-xs text-gray-500">Manage your entire staff hierarchy firm-wise</p>
+            <p className="text-xs text-gray-500">Manage your entire staff hierarchy globally</p>
           </div>
         </div>
-        <button
-          onClick={() => openModal('firm', 'create')}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Add Firm
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => openModal('firm', 'create')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add Firm
+          </button>
+          <button
+            onClick={() => openModal('superadmin', 'create')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add Super Admin
+          </button>
+        </div>
       </div>
 
       <div className="w-full flex flex-col gap-2">
         {loading ? (
           <div className="p-8 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-100">Loading hierarchy...</div>
-        ) : firmList.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-100">No firms found. Create a firm to start building your hierarchy.</div>
         ) : (
-          firmList.map(firm => renderFirm(firm))
+          <>
+            {superAdmins.length === 0 && firmList.length === 0 && (
+              <div className="p-12 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-3">
+                <Crown className="w-12 h-12 text-gray-300" />
+                <p>No organization data found. Start by creating a Super Admin or a Firm.</p>
+              </div>
+            )}
+            
+            {superAdmins.map(renderSuperAdmin)}
+
+            {orphanFirms.length > 0 && (
+              <div className="mt-8">
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <span className="w-full h-px bg-gray-200 flex-grow"></span>
+                  Independent Firms
+                  <span className="w-full h-px bg-gray-200 flex-grow"></span>
+                </h4>
+                {orphanFirms.map(f => renderFirm(f, 0))}
+              </div>
+            )}
+          </>
         )}
 
         {unassignedStaff.length > 0 && !loading && (
@@ -363,8 +446,11 @@ export default function StaffHierarchyView() {
         )}
       </div>
 
+      {modalType === 'superadmin' && (
+        <SuperAdminModal mode={modalMode} entity={selectedEntity} onClose={() => closeModal()} onSaved={() => closeModal(true)} showToast={showToast} />
+      )}
       {modalType === 'firm' && (
-        <FirmModal mode={modalMode} entity={selectedEntity} onClose={() => closeModal()} onSaved={() => closeModal(true)} showToast={showToast} />
+        <FirmModal mode={modalMode} entity={selectedEntity} superAdmins={superAdmins} onClose={() => closeModal()} onSaved={() => closeModal(true)} showToast={showToast} />
       )}
       {modalType === 'admin' && (
         <AdminModal mode={modalMode} entity={selectedEntity} parentOpts={parentData} onClose={() => closeModal()} onSaved={() => closeModal(true)} showToast={showToast} />
