@@ -31,11 +31,20 @@ export default function MemberModal({ mode, entity, parentOpts, teams, managers,
   }, [mode, entity, parentOpts]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputVal = e.target.value;
-    if (!inputVal.startsWith('+91 ')) {
-      inputVal = '+91 ' + inputVal.replace(/\D/g, '').replace(/^91/, '');
+    let digits = e.target.value.replace(/\D/g, '');
+    if (digits.startsWith('91')) {
+      digits = digits.substring(2);
     }
-    setFormData(p => ({ ...p, phone: inputVal }));
+    digits = digits.substring(0, 10);
+    
+    let formatted = '+91 ';
+    if (digits.length > 5) {
+      formatted += digits.substring(0, 5) + ' ' + digits.substring(5);
+    } else if (digits.length > 0) {
+      formatted += digits;
+    }
+    
+    setFormData(p => ({ ...p, phone: formatted }));
   };
 
   const handleSave = async () => {
