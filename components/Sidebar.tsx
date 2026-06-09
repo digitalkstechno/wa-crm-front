@@ -30,7 +30,22 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
   const { logout, staff } = useAuth();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [firmData, setFirmData] = React.useState<any>(null);
   const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (staff?.firmId) {
+      // Assuming apiFetch handles auth implicitly
+      const token = localStorage.getItem('wa_crm_token');
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/firms/${staff.firmId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.data) setFirmData(res.data);
+      }).catch(console.error);
+    }
+  }, [staff?.firmId]);
 
 
   const menuItems = [
@@ -49,23 +64,34 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
       'h-screen bg-white border-r border-gray-100 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300',
       collapsed ? 'w-[72px]' : 'w-64'
     )}>
-      {/* Logo + Toggle */}
       <div className={cn('p-4 flex items-center border-b border-gray-100', collapsed ? 'justify-center' : 'justify-between')}>
         {!collapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0">
-              <MessageSquare className="text-white w-5 h-5" />
-            </div>
+            {firmData?.logo ? (
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-gray-100 shadow-sm">
+                <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/v1/api', '')}${firmData.logo}`} alt="Logo" className="w-full h-full object-contain p-1" />
+              </div>
+            ) : (
+              <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                <MessageSquare className="text-white w-5 h-5" />
+              </div>
+            )}
             <div>
-              <h1 className="font-bold text-gray-900 text-base leading-tight">WA CRM</h1>
-              <p className="text-[10px] text-gray-400 font-medium">Reminder Suite</p>
+              <h1 className="font-bold text-gray-900 text-base leading-tight truncate max-w-[130px]">{firmData?.name || 'WA CRM'}</h1>
+              <p className="text-[10px] text-gray-400 font-medium">{firmData?.name ? 'Organization' : 'Reminder Suite'}</p>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
-            <MessageSquare className="text-white w-5 h-5" />
-          </div>
+          firmData?.logo ? (
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden bg-white border border-gray-100 shadow-sm">
+              <img src={`${process.env.NEXT_PUBLIC_API_URL?.replace('/v1/api', '')}${firmData.logo}`} alt="Logo" className="w-full h-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-sm">
+              <MessageSquare className="text-white w-5 h-5" />
+            </div>
+          )
         )}
         {!collapsed && (
           <button

@@ -3,14 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, CheckSquare, Users, User, Share2, Layers } from 'lucide-react';
+import { Settings, CheckSquare, Users, User, Share2, Layers, Building } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // Determine active main tab
   const isTaskSection = pathname.includes('/task-status') || pathname.includes('/task-types');
-  const activeMainTab = isTaskSection ? 'task' : 'staff';
+  const isCompanySection = pathname.includes('/company');
+  const activeMainTab = isCompanySection ? 'company' : isTaskSection ? 'task' : 'staff';
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -30,6 +31,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           >
             <CheckSquare className="w-4 h-4" />
             Task Management
+          </Link>
+          <Link 
+            href="/settings/company" 
+            className={`flex items-center gap-2 px-6 py-3.5 font-bold text-sm border-b-2 transition-all ${activeMainTab === 'company' ? 'border-amber-500 text-amber-600 bg-white rounded-t-xl' : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 rounded-t-xl'}`}
+          >
+            <Building className="w-4 h-4" />
+            Company Management
           </Link>
         </div>
 
@@ -75,6 +83,17 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               >
                 <CheckSquare className="w-4 h-4" />
                 Task Types
+              </Link>
+            </>
+          )}
+          {activeMainTab === 'company' && (
+            <>
+              <Link 
+                href="/settings/company" 
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${pathname === '/settings/company' ? 'bg-amber-50 text-amber-700 shadow-sm border border-amber-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 border border-transparent'}`}
+              >
+                <Building className="w-4 h-4" />
+                Firm Branding
               </Link>
             </>
           )}

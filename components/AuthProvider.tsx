@@ -8,6 +8,8 @@ type staff = {
   fullName: string;
   email: string;
   phone?: string;
+  roleType?: string;
+  firmId?: string;
 };
 
 type AuthContextType = {
