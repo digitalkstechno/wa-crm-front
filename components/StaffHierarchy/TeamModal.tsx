@@ -57,10 +57,12 @@ export default function TeamModal({ mode, entity, parentOpts, managers, staffLis
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Name</label>
             <input type="text" value={formData.teamName} onChange={e => setFormData(p => ({ ...p, teamName: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all" placeholder="e.g. Sales Team Alpha" />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Code</label>
-            <input type="text" value={formData.teamCode} onChange={e => setFormData(p => ({ ...p, teamCode: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all" placeholder="e.g. SL-01" />
-          </div>
+          {mode === 'edit' && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Team Code</label>
+              <input type="text" value={formData.teamCode} readOnly className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none text-gray-500 cursor-not-allowed border border-transparent" />
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Manager</label>
             <select value={formData.managerId} onChange={e => setFormData(p => ({ ...p, managerId: e.target.value }))} className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all">
