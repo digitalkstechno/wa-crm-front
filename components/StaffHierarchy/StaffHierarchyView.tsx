@@ -10,6 +10,8 @@ import AdminModal from './AdminModal';
 import ManagerModal from './ManagerModal';
 import TeamModal from './TeamModal';
 import MemberModal from './MemberModal';
+import OrgChartView from './OrgChartView';
+import { AlignLeft, Network } from 'lucide-react';
 
 type Firm = {
   _id: string;
@@ -49,6 +51,7 @@ export default function StaffHierarchyView() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [teamList, setTeamList] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list');
   
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
@@ -378,7 +381,15 @@ export default function StaffHierarchyView() {
             <p className="text-xs text-gray-500">Manage your entire staff hierarchy globally</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <div className="flex bg-gray-100 p-1 rounded-xl mr-2">
+            <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              <AlignLeft className="w-4 h-4" /> List
+            </button>
+            <button onClick={() => setViewMode('chart')} className={`px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-all ${viewMode === 'chart' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              <Network className="w-4 h-4" /> Chart
+            </button>
+          </div>
           <button
             onClick={() => openModal('firm', 'create')}
             className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-sm"
@@ -399,6 +410,8 @@ export default function StaffHierarchyView() {
       <div className="w-full flex flex-col gap-2">
         {loading ? (
           <div className="p-8 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-100">Loading hierarchy...</div>
+        ) : viewMode === 'chart' ? (
+          <OrgChartView firmList={firmList} staffList={staffList} teamList={teamList} />
         ) : (
           <>
             {superAdmins.length === 0 && firmList.length === 0 && (
