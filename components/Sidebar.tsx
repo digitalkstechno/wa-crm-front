@@ -148,6 +148,14 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
                       Task Statuses
                     </Link>
                     <Link
+                      href="/settings/staff-hierarchy"
+                      className={`block px-3 py-2 rounded-xl text-sm transition-all ${
+                        pathname === '/settings/staff-hierarchy' ? "bg-emerald-50 text-emerald-600 font-medium" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                    >
+                      Staff Hierarchy
+                    </Link>
+                    <Link
                       href="/settings/task-types"
                       className={cn(
                         "block px-3 py-2 rounded-lg text-sm transition-all",
