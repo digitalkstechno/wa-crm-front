@@ -19,10 +19,11 @@ type Template = {
   _id: string;
   name: string;
   body: string;
+  assignedTo?: { _id: string; fullName: string } | null;
   createdAt: string;
 };
 
-const emptyForm = { name: "", body: "" };
+const emptyForm = { name: "", body: "", assignedTo: "" };
 
 export default function TemplateManager() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -43,10 +44,21 @@ export default function TemplateManager() {
     currentPage: 1,
     limit: 10,
   });
+  const [staffList, setStaffList] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTemplates(search, 1);
+    fetchStaff();
   }, []);
+
+  const fetchStaff = async () => {
+    try {
+      const data = await apiFetch('/staff');
+      setStaffList(data.data ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     setPage(1);
@@ -78,7 +90,11 @@ export default function TemplateManager() {
 
   const openEdit = (t: Template) => {
     setEditingTemplate(t);
-    setForm({ name: t.name, body: t.body });
+    setForm({ 
+      name: t.name, 
+      body: t.body, 
+      assignedTo: typeof t.assignedTo === 'object' ? t.assignedTo?._id ?? '' : t.assignedTo ?? ''
+    });
     setIsDrawerOpen(true);
     setOpenMenuId(null);
   };
@@ -86,15 +102,20 @@ export default function TemplateManager() {
   const handleSave = async () => {
     if (!form.name.trim() || !form.body.trim()) return;
     setSaving(true);
+    const payload = {
+      name: form.name,
+      body: form.body,
+      assignedTo: form.assignedTo || null
+    };
     if (editingTemplate) {
       await apiFetch(`/templates/${editingTemplate._id}`, {
         method: "PUT",
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
     } else {
       const data = await apiFetch("/templates", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (data.data?._id) setPreviewId(data.data._id);
     }
@@ -424,6 +445,25 @@ export default function TemplateManager() {
                     }
                     className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20"
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    Assigned Staff
+                  </label>
+                  <select
+                    value={form.assignedTo}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, assignedTo: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20 appearance-none font-medium text-gray-700"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.fullName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">

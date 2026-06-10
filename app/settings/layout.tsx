@@ -2,11 +2,24 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Settings, CheckSquare, Users, User, Share2, Layers, Building } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { staff, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading && staff && staff.roleType === 'Member') {
+      router.push('/');
+    }
+  }, [staff, loading, router]);
+
+  if (loading || (staff && staff.roleType === 'Member')) {
+    return <div className="p-8 text-center text-gray-500 font-medium">Loading...</div>;
+  }
 
   // Determine active main tab
   const isTaskSection = pathname.includes('/task-status') || pathname.includes('/task-types');

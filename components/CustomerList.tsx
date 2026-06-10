@@ -15,10 +15,11 @@ type Customer = {
   tags: string[];
   group: { _id: string; name: string; color: string } | null;
   notes: string;
+  assignedTo?: { _id: string; fullName: string } | null;
   createdAt: string;
 };
 
-const emptyForm = { name: '', phone: '+91 ', email: '', tags: [] as string[], group: '', notes: '', tagInput: '' };
+const emptyForm = { name: '', phone: '+91 ', email: '', tags: [] as string[], group: '', notes: '', tagInput: '', assignedTo: '' };
 
 const tagColors: Record<string, string> = {
   VIP: 'bg-emerald-50 text-emerald-600',
@@ -55,6 +56,7 @@ const CustomerList = () => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportGroupId, setExportGroupId] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [staffList, setStaffList] = useState<any[]>([]);
 
 
   useEffect(() => {
@@ -107,19 +109,29 @@ const CustomerList = () => {
   useEffect(() => {
     fetchCustomers(search, 1);
     fetchGroups();
+    fetchStaff();
   }, []);
 
-    const fetchCustomers = async (q = '', p = 1) => {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (q) params.set('search', q);
-      params.set('page', String(p));
-      params.set('limit', '10');
-      const data = await apiFetch(`/customers?${params.toString()}`);
-      setCustomers(data.data ?? []);
-      if (data.pagination) setPagination(data.pagination);
-      setLoading(false);
-    };
+  const fetchStaff = async () => {
+    try {
+      const data = await apiFetch('/staff');
+      setStaffList(data.data ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchCustomers = async (q = '', p = 1) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (q) params.set('search', q);
+    params.set('page', String(p));
+    params.set('limit', '10');
+    const data = await apiFetch(`/customers?${params.toString()}`);
+    setCustomers(data.data ?? []);
+    if (data.pagination) setPagination(data.pagination);
+    setLoading(false);
+  };
 
   const fetchGroups = async () => {
     const data = await apiFetch('/customer-groups');
@@ -172,7 +184,15 @@ const CustomerList = () => {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    const payload = { name: form.name, phone: form.phone, email: form.email, tags: form.tags, group: form.group || null, notes: form.notes };
+    const payload = { 
+      name: form.name, 
+      phone: form.phone, 
+      email: form.email, 
+      tags: form.tags, 
+      group: form.group || null, 
+      notes: form.notes,
+      assignedTo: form.assignedTo || null
+    };
     if (editingCustomer) {
       await apiFetch(`/customers/${editingCustomer._id}`, { method: 'PUT', body: JSON.stringify(payload) });
     } else {
@@ -258,7 +278,16 @@ const CustomerList = () => {
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, phone: formatPhone(c.phone), email: c.email, tags: c.tags, group: c.group?._id ?? '', notes: c.notes, tagInput: '' });
+    setForm({ 
+      name: c.name, 
+      phone: formatPhone(c.phone), 
+      email: c.email, 
+      tags: c.tags, 
+      group: c.group?._id ?? '', 
+      notes: c.notes, 
+      tagInput: '',
+      assignedTo: typeof c.assignedTo === 'object' ? c.assignedTo?._id ?? '' : c.assignedTo ?? ''
+    });
     setErrors({});
     setIsDrawerOpen(true);
     setOpenMenuId(null);
@@ -326,7 +355,9 @@ const CustomerList = () => {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{customer.name}</p>
-                      <p className="text-xs text-gray-400">{customer.email}</p>
+                      <p className="text-xs text-gray-400">
+                        {customer.email} {customer.assignedTo ? `• Assigned to ${customer.assignedTo.fullName}` : ''}
+                      </p>
                     </div>
                   </div>
                 </td>
@@ -491,6 +522,20 @@ const CustomerList = () => {
                       )}
                     </AnimatePresence>
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Assigned Staff</label>
+                  <select
+                    value={form.assignedTo}
+                    onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20 appearance-none font-medium text-gray-700"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList.map(s => (
+                      <option key={s._id} value={s._id}>{s.fullName}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">

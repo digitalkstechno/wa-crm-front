@@ -32,21 +32,47 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [firmData, setFirmData] = React.useState<any>(null);
   const pathname = usePathname();
+  const [allFirms, setAllFirms] = React.useState<any[]>([]);
+  const [selectedFirm, setSelectedFirm] = React.useState<string>('');
 
   React.useEffect(() => {
-    if (staff?.firmId) {
-      // Assuming apiFetch handles auth implicitly
+    if (staff?.roleType === 'Super Admin') {
       const token = localStorage.getItem('wa_crm_token');
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/firms/${staff.firmId}`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/firms`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.data) setAllFirms(res.data);
+      }).catch(console.error);
+      
+      const saved = localStorage.getItem('wa_crm_selected_firm_id') || '';
+      setSelectedFirm(saved);
+    }
+  }, [staff]);
+
+  React.useEffect(() => {
+    const activeFirmId = staff?.roleType === 'Super Admin'
+      ? (localStorage.getItem('wa_crm_selected_firm_id') || '')
+      : staff?.firmId;
+
+    if (activeFirmId) {
+      const token = localStorage.getItem('wa_crm_token');
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/firms/${activeFirmId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(r => r.json())
       .then(res => {
         if (res.data) setFirmData(res.data);
-      }).catch(console.error);
+        else setFirmData(null);
+      }).catch(err => {
+        console.error(err);
+        setFirmData(null);
+      });
+    } else {
+      setFirmData(null);
     }
-  }, [staff?.firmId]);
-
+  }, [staff, selectedFirm]);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -55,7 +81,12 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'templates', label: 'Templates', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  ].filter((item) => {
+    if (item.id === 'settings' && staff?.roleType === 'Member') {
+      return false;
+    }
+    return true;
+  });
 
   const initials = staff?.fullName?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
@@ -102,6 +133,33 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
           </button>
         )}
       </div>
+
+      {!collapsed && staff?.roleType === 'Super Admin' && (
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+          <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Select Active Firm</label>
+          <select
+            value={selectedFirm}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedFirm(val);
+              if (val) {
+                localStorage.setItem('wa_crm_selected_firm_id', val);
+              } else {
+                localStorage.removeItem('wa_crm_selected_firm_id');
+              }
+              window.location.reload();
+            }}
+            className="w-full text-xs bg-white border border-gray-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-gray-700 shadow-sm"
+          >
+            <option value="">All Firms (Global)</option>
+            {allFirms.map((firm) => (
+              <option key={firm._id} value={firm._id}>
+                {firm.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Expand button when collapsed */}
       {collapsed && (

@@ -43,6 +43,7 @@ interface Reminder {
   template?: { _id: string; name: string; body?: string } | string;
   newName?: string;
   newPhone?: string;
+  assignedTo?: { _id: string; fullName: string } | string | null;
   repeat?: {
     enabled: boolean;
     frequency?: "day" | "week" | "month" | "year";
@@ -186,6 +187,9 @@ const ReminderList = () => {
   const [repeatEndDate, setRepeatEndDate] = useState("");
   const [repeatAfterCount, setRepeatAfterCount] = useState(1);
 
+  const [assignedTo, setAssignedTo] = useState<string>("");
+  const [staffList, setStaffList] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<Group[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -242,12 +246,14 @@ const ReminderList = () => {
 
   const fetchDependencies = async () => {
     try {
-      const [gData, tData] = await Promise.all([
+      const [gData, tData, sData] = await Promise.all([
         apiFetch("/customer-groups/all"),
         apiFetch("/templates"),
+        apiFetch("/staff"),
       ]);
       setGroups(gData.data || []);
       setTemplates(tData.data || []);
+      setStaffList(sData.data || []);
     } catch (err) {
       console.error("Failed to fetch dependencies:", err);
     }
@@ -290,6 +296,7 @@ const ReminderList = () => {
     setShowInlineTemplateForm(false);
     setInlineTemplateName("");
     setInlineTemplateBody("");
+    setAssignedTo("");
   };
 
   const toggleCustomer = (c: { id: string; name: string; phone: string }) => {
@@ -384,6 +391,9 @@ const ReminderList = () => {
       const tplId =
         typeof r.template === "object" ? r.template?._id : r.template;
       setSelectedTemplate(tplId || null);
+
+      const assignId = typeof r.assignedTo === "object" ? r.assignedTo?._id : r.assignedTo;
+      setAssignedTo(assignId || "");
 
       const d = new Date(r.scheduledAt);
       setSchedDate(d.toISOString().split("T")[0]);
@@ -1453,6 +1463,26 @@ const ReminderList = () => {
                     ))}
                   </div>
                 </div>
+
+                {/* Assigned Staff */}
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                    Assigned Staff
+                  </label>
+                  <select
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 font-medium text-gray-700"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Date & Time */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1742,6 +1772,7 @@ const ReminderList = () => {
                         newPhone,
                         customers: selectedCustomers.map((c) => c.id),
                         groups: selectedGroups,
+                        assignedTo: assignedTo || null,
                         repeat: {
                           enabled: repeatEnabled,
                           frequency: repeatFreq,
