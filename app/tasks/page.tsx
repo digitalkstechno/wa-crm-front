@@ -24,6 +24,11 @@ interface Task {
   assignedRM?: Staff | null;
   priority?: string;
   
+  sendCustomerReminder?: boolean;
+  customerTemplate?: { _id: string; name: string; body: string } | null;
+  sendStaffReminder?: boolean;
+  staffTemplate?: { _id: string; name: string; body: string } | null;
+  
   taskDate?: string | null;
   dueDate: string | null;
   dueTime?: string;
@@ -44,6 +49,7 @@ export default function TasksPage() {
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customersList, setCustomersList] = useState<CustomerCustomer[]>([]);
+  const [templatesList, setTemplatesList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal
@@ -54,10 +60,14 @@ export default function TasksPage() {
     title: '', description: '', type: '', status: '',
     customer: '',
     assignedTo: '', priority: 'Medium',
-    taskDate: getTodayLocal(), dueDate: '', dueTime: ''
+    taskDate: getTodayLocal(), dueDate: '', dueTime: '',
+    sendCustomerReminder: false,
+    customerTemplate: '',
+    sendStaffReminder: false,
+    staffTemplate: ''
   };
   
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState<any>(initialForm);
 
   useEffect(() => {
     fetchData();
@@ -65,18 +75,20 @@ export default function TasksPage() {
 
   const fetchData = async () => {
     try {
-      const [taskRes, statusRes, typeRes, staffRes, customerRes] = await Promise.all([
+      const [taskRes, statusRes, typeRes, staffRes, customerRes, templateRes] = await Promise.all([
         apiFetch('/tasks'),
         apiFetch('/task-status'),
         apiFetch('/task-type'),
         apiFetch('/staff'),
-        apiFetch('/customers')
+        apiFetch('/customers'),
+        apiFetch('/templates?limit=100')
       ]);
       setTasks(taskRes.data || []);
       setStatuses(statusRes.data || []);
       setTaskTypes(typeRes.data || []);
       setStaff(staffRes.data || []);
       setCustomersList(customerRes.data || []);
+      setTemplatesList(templateRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -144,6 +156,10 @@ export default function TasksPage() {
       taskDate: t.taskDate ? new Date(t.taskDate).toISOString().split('T')[0] : '',
       dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '',
       dueTime: t.dueTime || '',
+      sendCustomerReminder: t.sendCustomerReminder || false,
+      customerTemplate: t.customerTemplate ? (typeof t.customerTemplate === 'object' ? (t.customerTemplate as any)._id : t.customerTemplate) : '',
+      sendStaffReminder: t.sendStaffReminder || false,
+      staffTemplate: t.staffTemplate ? (typeof t.staffTemplate === 'object' ? (t.staffTemplate as any)._id : t.staffTemplate) : '',
     });
     setIsModalOpen(true);
   };
@@ -542,6 +558,68 @@ export default function TasksPage() {
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Due Time</label>
                       <input type="time" value={form.dueTime} onChange={e => setForm({ ...form, dueTime: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all" />
+                    </div>
+                  </div>
+
+                  {/* Section: WhatsApp Notifications */}
+                  <div className="space-y-4 pt-2">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">WhatsApp Notifications</h4>
+                    <div className="space-y-4">
+                      {/* Customer Reminder Checkbox & Select */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={form.sendCustomerReminder}
+                            onChange={e => setForm({ ...form, sendCustomerReminder: e.target.checked })}
+                            className="w-4 h-4 rounded text-emerald-500 border-gray-300 focus:ring-emerald-500"
+                          />
+                          <span className="text-sm font-semibold text-gray-700">Customer Reminder</span>
+                        </label>
+                        {form.sendCustomerReminder && (
+                          <div className="pl-6 space-y-1.5 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Customer Template</label>
+                            <select
+                              value={form.customerTemplate}
+                              onChange={e => setForm({ ...form, customerTemplate: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none"
+                            >
+                              <option value="">Select a template</option>
+                              {templatesList.map(tmpl => (
+                                <option key={tmpl._id} value={tmpl._id}>{tmpl.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Staff Reminder Checkbox & Select */}
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={form.sendStaffReminder}
+                            onChange={e => setForm({ ...form, sendStaffReminder: e.target.checked })}
+                            className="w-4 h-4 rounded text-emerald-500 border-gray-300 focus:ring-emerald-500"
+                          />
+                          <span className="text-sm font-semibold text-gray-700">Staff Reminder</span>
+                        </label>
+                        {form.sendStaffReminder && (
+                          <div className="pl-6 space-y-1.5 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Staff Template</label>
+                            <select
+                              value={form.staffTemplate}
+                              onChange={e => setForm({ ...form, staffTemplate: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none"
+                            >
+                              <option value="">Select a template</option>
+                              {templatesList.map(tmpl => (
+                                <option key={tmpl._id} value={tmpl._id}>{tmpl.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
