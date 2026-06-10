@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Columns, List, Calendar, User, X, Clock, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import RichTextEditor from '@/components/RichTextEditor';
 
 interface TaskStatus { _id: string; name: string; color: string; order: number; }
 interface TaskType { _id: string; name: string; color: string; }
@@ -52,7 +53,7 @@ export default function TasksPage() {
   const initialForm = {
     title: '', description: '', type: '', status: '',
     customer: '',
-    assignedTo: '', assignedRM: '', priority: 'Medium',
+    assignedTo: '', priority: 'Medium',
     taskDate: getTodayLocal(), dueDate: '', dueTime: ''
   };
   
@@ -138,7 +139,6 @@ export default function TasksPage() {
       customer: t.customer?._id || '',
       
       assignedTo: t.assignedTo ? t.assignedTo._id : '',
-      assignedRM: t.assignedRM ? t.assignedRM._id : '',
       priority: t.priority || 'Medium',
       
       taskDate: t.taskDate ? new Date(t.taskDate).toISOString().split('T')[0] : '',
@@ -473,7 +473,7 @@ export default function TasksPage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Description</label>
-                      <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 border border-transparent transition-all resize-none" />
+                      <RichTextEditor value={form.description} onChange={val => setForm({ ...form, description: val })} placeholder="Enter task details/description..." />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Task Type</label>
@@ -511,18 +511,11 @@ export default function TasksPage() {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Assigned RM</label>
-                        <select value={form.assignedRM} onChange={e => setForm({ ...form, assignedRM: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none">
-                          <option value="">Unassigned</option>
-                          {staff.map(s => <option key={s._id} value={s._id}>{s.fullName}</option>)}
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Priority</label>
+                        <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none">
+                          {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Priority</label>
-                      <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300 transition-all appearance-none">
-                        {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status *</label>
