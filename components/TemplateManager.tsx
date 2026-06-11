@@ -25,6 +25,45 @@ type Template = {
 
 const emptyForm = { name: "", body: "", assignedTo: "" };
 
+const placeholderGroups = [
+  {
+    title: "👤 Customer Placeholders",
+    placeholders: [
+      { label: "Name", value: "{customerName}" },
+      { label: "Phone", value: "{customerPhone}" },
+      { label: "Email", value: "{customerEmail}" },
+    ]
+  },
+  {
+    title: "🆔 Task Placeholders",
+    placeholders: [
+      { label: "ID", value: "{taskId}" },
+      { label: "Title", value: "{taskTitle}" },
+      { label: "Due Date", value: "{taskDueDate}" },
+      { label: "Due Time", value: "{taskDueTime}" },
+      { label: "Description", value: "{taskDescription}" },
+    ]
+  },
+  {
+    title: "⏰ Reminder Placeholders",
+    placeholders: [
+      { label: "Title", value: "{reminderTitle}" },
+      { label: "Name", value: "{reminderName}" },
+      { label: "Scheduled At", value: "{reminderScheduledAt}" },
+      { label: "Custom Message", value: "{reminderCustomMessage}" },
+    ]
+  },
+  {
+    title: "🏢 Firm & Staff Placeholders",
+    placeholders: [
+      { label: "Firm Name", value: "{firmName}" },
+      { label: "Staff Name", value: "{staffName}" },
+      { label: "Staff Phone", value: "{staffPhone}" },
+      { label: "Staff Email", value: "{staffEmail}" },
+    ]
+  }
+];
+
 export default function TemplateManager() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [search, setSearch] = useState("");
@@ -122,6 +161,26 @@ export default function TemplateManager() {
     setSaving(false);
     setIsDrawerOpen(false);
     fetchTemplates(search, page);
+  };
+
+  const insertPlaceholder = (placeholder: string) => {
+    const textarea = document.getElementById("template-body-textarea") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = form.body;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    
+    const newBody = before + placeholder + after;
+    setForm(f => ({ ...f, body: newBody }));
+
+    // Focus back and set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+    }, 0);
   };
 
   const handleDelete = async (id: string) => {
@@ -446,41 +505,50 @@ export default function TemplateManager() {
                     className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Assigned Staff
-                  </label>
-                  <select
-                    value={form.assignedTo}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, assignedTo: e.target.value }))
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20 appearance-none font-medium text-gray-700"
-                  >
-                    <option value="">Unassigned</option>
-                    {staffList.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     Message Body <span className="text-red-400">*</span>
                   </label>
                   <textarea
+                    id="template-body-textarea"
                     rows={8}
                     placeholder="Hello! 👋 ..."
                     value={form.body}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, body: e.target.value }))
                     }
-                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none border border-transparent focus:ring-2 focus:ring-emerald-500/20 resize-none font-medium text-gray-700"
                   />
-                  <p className="text-[10px] text-gray-400">
-                    {form.body.length} characters
-                  </p>
+                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                    <span>{form.body.length} characters</span>
+                  </div>
+
+                  {/* Grouped Insert Variables Helper Buttons */}
+                  <div className="space-y-2.5 mt-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100 max-h-48 overflow-y-auto">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                      Insert Placeholders:
+                    </span>
+                    {placeholderGroups.map((group) => (
+                      <div key={group.title} className="space-y-1">
+                        <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-widest block">
+                          {group.title}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {group.placeholders.map((p) => (
+                            <button
+                              key={p.value}
+                              type="button"
+                              onClick={() => insertPlaceholder(p.value)}
+                              className="px-2.5 py-0.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-lg text-[9px] font-bold text-gray-700 hover:text-emerald-700 transition-all shadow-sm"
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

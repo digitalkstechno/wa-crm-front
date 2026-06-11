@@ -324,8 +324,7 @@ const ReminderList = () => {
     if (recipientType === "groups") return selectedGroups.length > 0;
     return false;
   })();
-  const step3Valid =
-    selectedTemplate !== null && schedDate !== "" && schedTime !== "";
+  const step3Valid = schedDate !== "" && schedTime !== "";
 
   const allCustomerNames = Array.from(
     new Set(
@@ -1464,24 +1463,7 @@ const ReminderList = () => {
                   </div>
                 </div>
 
-                {/* Assigned Staff */}
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                    Assigned Staff
-                  </label>
-                  <select
-                    value={assignedTo}
-                    onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 font-medium text-gray-700"
-                  >
-                    <option value="">Unassigned</option>
-                    {staffList.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+
 
                 {/* Date & Time */}
                 <div className="grid grid-cols-2 gap-4">

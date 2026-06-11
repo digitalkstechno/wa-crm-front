@@ -3,10 +3,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
-import { Save, Building, Image as ImageIcon, Upload } from 'lucide-react';
+import { Save, Building, Image as ImageIcon, Upload, Globe, Key, Phone, FileText, Languages, Cpu } from 'lucide-react';
 
 function FirmBrandingCard({ firm, onSaved, showToast }: any) {
   const [name, setName] = useState(firm.name);
+  const [waApiDomain, setWaApiDomain] = useState(firm.waApiDomain || '');
+  const [waApiVersion, setWaApiVersion] = useState(firm.waApiVersion || '');
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState(firm.waPhoneNumberId || '');
+  const [waAccessToken, setWaAccessToken] = useState(firm.waAccessToken || '');
+  const [waTemplateId, setWaTemplateId] = useState(firm.waTemplateId || '');
+  const [waTemplateLang, setWaTemplateLang] = useState(firm.waTemplateLang || '');
+  const [waTemplateJson, setWaTemplateJson] = useState(firm.waTemplateJson || '');
   const [logoPreview, setLogoPreview] = useState<string | null>(
     firm.logo ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/v1/api', '')}${firm.logo}` : null
   );
@@ -22,14 +29,97 @@ function FirmBrandingCard({ firm, onSaved, showToast }: any) {
     }
   };
 
+  const placeholderGroups = [
+    {
+      title: "👤 Customer Placeholders",
+      placeholders: [
+        { label: "Name", value: "{customerName}" },
+        { label: "Phone", value: "{customerPhone}" },
+        { label: "Email", value: "{customerEmail}" },
+      ]
+    },
+    {
+      title: "🆔 Task Placeholders",
+      placeholders: [
+        { label: "ID", value: "{taskId}" },
+        { label: "Title", value: "{taskTitle}" },
+        { label: "Due Date", value: "{taskDueDate}" },
+        { label: "Due Time", value: "{taskDueTime}" },
+        { label: "Description", value: "{taskDescription}" },
+      ]
+    },
+    {
+      title: "⏰ Reminder Placeholders",
+      placeholders: [
+        { label: "Title", value: "{reminderTitle}" },
+        { label: "Name", value: "{reminderName}" },
+        { label: "Scheduled At", value: "{reminderScheduledAt}" },
+        { label: "Custom Message", value: "{reminderCustomMessage}" },
+      ]
+    },
+    {
+      title: "🏢 Firm & Staff Placeholders",
+      placeholders: [
+        { label: "Firm Name", value: "{firmName}" },
+        { label: "Staff Name", value: "{staffName}" },
+        { label: "Staff Phone", value: "{staffPhone}" },
+        { label: "Staff Email", value: "{staffEmail}" },
+      ]
+    },
+    {
+      title: "🎲 Meta Custom Variables",
+      placeholders: [
+        { label: "Template Body", value: "{templateBody}" },
+        { label: "Random Code", value: "{randomCode}" },
+      ]
+    }
+  ];
+
+  const insertJsonPlaceholder = (val: string) => {
+    const textarea = document.getElementById(`wa-template-json-textarea-${firm._id}`) as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = waTemplateJson;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    
+    const newText = before + val + after;
+    setWaTemplateJson(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + val.length, start + val.length);
+    }, 0);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Update Name
-      if (name !== firm.name) {
+      // Update Name and WhatsApp API settings
+      if (
+        name !== firm.name ||
+        waApiDomain !== (firm.waApiDomain || '') ||
+        waApiVersion !== (firm.waApiVersion || '') ||
+        waPhoneNumberId !== (firm.waPhoneNumberId || '') ||
+        waAccessToken !== (firm.waAccessToken || '') ||
+        waTemplateId !== (firm.waTemplateId || '') ||
+        waTemplateLang !== (firm.waTemplateLang || '') ||
+        waTemplateJson !== (firm.waTemplateJson || '')
+      ) {
         await apiFetch(`/firms/${firm._id}`, {
           method: 'PUT',
-          body: JSON.stringify({ name })
+          body: JSON.stringify({
+            name,
+            waApiDomain: waApiDomain || null,
+            waApiVersion: waApiVersion || null,
+            waPhoneNumberId: waPhoneNumberId || null,
+            waAccessToken: waAccessToken || null,
+            waTemplateId: waTemplateId || null,
+            waTemplateLang: waTemplateLang || null,
+            waTemplateJson: waTemplateJson || null
+          })
         });
       }
 
@@ -121,6 +211,186 @@ function FirmBrandingCard({ firm, onSaved, showToast }: any) {
                 accept="image/*"
                 className="hidden"
               />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* WhatsApp Configuration Section */}
+      <div className="border-t border-gray-100 p-6 md:p-8 bg-gray-50/30">
+        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <span>📱</span> WhatsApp Business API Settings
+        </h4>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA API Domain</label>
+            <div className="relative">
+              <Globe className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={waApiDomain}
+                onChange={e => setWaApiDomain(e.target.value)}
+                placeholder="e.g. https://crmapi.crmbot.in"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA API Version</label>
+            <div className="relative">
+              <Cpu className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={waApiVersion}
+                onChange={e => setWaApiVersion(e.target.value)}
+                placeholder="e.g. v19.0"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA Phone Number ID</label>
+            <div className="relative">
+              <Phone className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={waPhoneNumberId}
+                onChange={e => setWaPhoneNumberId(e.target.value)}
+                placeholder="e.g. 730141010176205"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA Access Token</label>
+            <div className="relative">
+              <Key className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="password"
+                value={waAccessToken}
+                onChange={e => setWaAccessToken(e.target.value)}
+                placeholder="Enter Access Token"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA Template ID</label>
+            <div className="relative">
+              <FileText className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={waTemplateId}
+                onChange={e => setWaTemplateId(e.target.value)}
+                placeholder="e.g. order_data"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA Template Language</label>
+            <div className="relative">
+              <Languages className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={waTemplateLang}
+                onChange={e => setWaTemplateLang(e.target.value)}
+                placeholder="e.g. en"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500/20 border border-transparent focus:border-amber-300 transition-all placeholder:text-gray-300"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">If blank, falls back to .env value.</p>
+          </div>
+
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WA Template JSON Payload</label>
+            <div className="relative">
+              <textarea
+                id={`wa-template-json-textarea-${firm._id}`}
+                rows={10}
+                value={waTemplateJson}
+                onChange={e => setWaTemplateJson(e.target.value)}
+                placeholder='Enter custom WhatsApp template components JSON object...'
+                className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-xs font-mono outline-none border border-transparent focus:ring-2 focus:ring-amber-500/20 resize-y font-medium text-gray-700"
+              />
+            </div>
+            <p className="text-[10px] text-gray-500">If blank, defaults to standard template payload configuration.</p>
+            
+            {/* Template Variables Helper Buttons */}
+            <div className="space-y-3 mt-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100 max-h-60 overflow-y-auto">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                Insert Variable Placeholders:
+              </span>
+              {placeholderGroups.map((group) => (
+                <div key={group.title} className="space-y-1">
+                  <span className="text-[9px] font-bold text-amber-800 uppercase tracking-widest block">
+                    {group.title}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.placeholders.map((p) => (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => insertJsonPlaceholder(p.value)}
+                        className="px-2.5 py-1 bg-white hover:bg-amber-50 border border-gray-200 hover:border-amber-300 rounded-lg text-[9px] font-bold text-gray-700 hover:text-amber-700 transition-all shadow-sm"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Informational Meta WhatsApp JSON Note */}
+            <div className="mt-4 p-5 bg-amber-50/30 border border-amber-100/50 rounded-2xl space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs">📱</span>
+                <h5 className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                  Sample template JSON Configuration Note
+                </h5>
+              </div>
+              <p className="text-[10px] text-gray-600 leading-relaxed">
+                Configure your template components below. The variables (like <code>{`{customerName}`}</code>) will be replaced dynamically on the backend before sending the API request.
+              </p>
+              <pre className="text-[9px] font-mono bg-white border border-gray-100 text-gray-700 p-3 rounded-xl overflow-x-auto max-h-48">
+{`"template": {
+  "language": {
+    "policy": "deterministic",
+    "code": "en"
+  },
+  "name": "order_data",
+  "components": [
+    {
+      "type": "body",
+      "parameters": [
+        {
+          "type": "text",
+          "text": "VARIABLE_TEXT" // e.g. {customerName}
+        },
+        {
+          "type": "text",
+          "text": "VARIABLE_TEXT" // e.g. {randomCode}
+        },
+        {
+          "type": "text",
+          "text": "VARIABLE_TEXT" // e.g. {templateBody}
+        }
+      ]
+    }
+  ]
+}`}
+              </pre>
             </div>
           </div>
         </div>
