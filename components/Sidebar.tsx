@@ -49,7 +49,7 @@ const Sidebar = ({ activeTab, collapsed, setCollapsed }: SidebarProps) => {
               <MessageSquare className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900 text-base leading-tight">WA CRM</h1>
+              <h1 className="font-bold text-gray-900 text-base leading-tight">WhatsApp CRM</h1>
               <p className="text-[10px] text-gray-400 font-medium">Reminder Suite</p>
             </div>
           </div>
