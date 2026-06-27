@@ -4,19 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Save, Eye, EyeOff, Check } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
+import PhoneInput from '@/components/PhoneInput';
+import { parsePhoneNumber, cleanAndFormatPhone } from '@/lib/countries';
 type Tab = 'profile' | 'password';
 type Toast = { type: 'success' | 'error'; message: string } | null;
 
 const formatPhone = (val: string) => {
-  if (!val) return '+91 ';
-  let digits = val.replace(/\D/g, '');
-  if (digits.startsWith('91') && digits.length > 10) {
-    digits = digits.slice(2);
-  }
-  digits = digits.slice(0, 10);
-  if (digits.length === 0) return '+91 ';
-  if (digits.length <= 5) return `+91 ${digits}`;
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  return cleanAndFormatPhone(val);
 };
 
 export default function SettingsPage() {
@@ -37,38 +31,6 @@ export default function SettingsPage() {
   const [showNew, setShowNew] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputVal = e.target.value;
-    
-    if (!inputVal.startsWith('+91 ')) {
-      if (inputVal === '+91' || inputVal === '+9' || inputVal === '+' || inputVal === '') {
-        inputVal = '+91 ';
-      } else {
-        const digits = inputVal.replace(/\D/g, '');
-        if (digits.startsWith('91') && digits.length > 10) {
-          inputVal = '+91 ' + digits.slice(2);
-        } else {
-          inputVal = '+91 ' + digits;
-        }
-      }
-    }
-
-    const suffix = inputVal.slice(4);
-    let digits = suffix.replace(/\D/g, '');
-    digits = digits.slice(0, 10);
-    
-    let formatted = '+91 ';
-    if (digits.length > 0) {
-      if (digits.length <= 5) {
-        formatted = `+91 ${digits}`;
-      } else {
-        formatted = `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-      }
-    }
-    
-    setProfile(p => ({ ...p, phone: formatted }));
-  };
-
   useEffect(() => {
     apiFetch('/staff/me').then(res => {
       const d = res.data;
@@ -85,11 +47,17 @@ export default function SettingsPage() {
     }
     
     if (profile.phone) {
-      const digits = profile.phone.replace(/\D/g, '');
-      const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-      if (actualDigits.length !== 10) {
-        showToast('error', 'Phone number must be exactly 10 digits');
-        return;
+      const { countryCode, localNumber } = parsePhoneNumber(profile.phone);
+      if (countryCode === '+91') {
+        if (localNumber.length !== 10) {
+          showToast('error', 'Phone number must be exactly 10 digits');
+          return;
+        }
+      } else {
+        if (localNumber.length < 7 || localNumber.length > 15) {
+          showToast('error', 'Phone number must be between 7 and 15 digits');
+          return;
+        }
       }
     }
     
@@ -193,12 +161,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone</label>
-                  <input
-                    type="tel"
-                    placeholder="+91 xxxxx xxxxx"
+                  <PhoneInput
                     value={profile.phone}
-                    onChange={handlePhoneChange}
-                    className="w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 border border-transparent focus:border-emerald-300"
+                    onChange={val => setProfile(p => ({ ...p, phone: val }))}
                   />
                 </div>
               </div>

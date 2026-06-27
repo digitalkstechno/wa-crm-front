@@ -25,6 +25,8 @@ import {
 import * as XLSX from "xlsx";
 import { apiFetch } from "@/lib/api";
 import { motion, AnimatePresence } from "motion/react";
+import PhoneInput from "./PhoneInput";
+import { parsePhoneNumber, cleanAndFormatPhone } from "@/lib/countries";
 
 type ReminderStatus = "Scheduled" | "Pending" | "Sent" | "Failed";
 
@@ -96,15 +98,7 @@ type Group = {
 type RecipientType = "new" | "customers" | "groups";
 
 const formatPhone = (val: string) => {
-  if (!val) return '+91 ';
-  let digits = val.replace(/\D/g, '');
-  if (digits.startsWith('91') && digits.length > 10) {
-    digits = digits.slice(2);
-  }
-  digits = digits.slice(0, 10);
-  if (digits.length === 0) return '+91 ';
-  if (digits.length <= 5) return `+91 ${digits}`;
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  return cleanAndFormatPhone(val);
 };
 
 const ReminderList = () => {
@@ -123,39 +117,7 @@ const ReminderList = () => {
   );
   // New number
   const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("+91 ");
-
-  const handleNewPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputVal = e.target.value;
-    
-    if (!inputVal.startsWith('+91 ')) {
-      if (inputVal === '+91' || inputVal === '+9' || inputVal === '+' || inputVal === '') {
-        inputVal = '+91 ';
-      } else {
-        const digits = inputVal.replace(/\D/g, '');
-        if (digits.startsWith('91') && digits.length > 10) {
-          inputVal = '+91 ' + digits.slice(2);
-        } else {
-          inputVal = '+91 ' + digits;
-        }
-      }
-    }
-
-    const suffix = inputVal.slice(4);
-    let digits = suffix.replace(/\D/g, '');
-    digits = digits.slice(0, 10);
-    
-    let formatted = '+91 ';
-    if (digits.length > 0) {
-      if (digits.length <= 5) {
-        formatted = `+91 ${digits}`;
-      } else {
-        formatted = `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-      }
-    }
-    
-    setNewPhone(formatted);
-  };
+  const [newPhone, setNewPhone] = useState("+91");
   // Customers
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState<Record<string, string>>(
@@ -309,9 +271,11 @@ const ReminderList = () => {
   const step1Valid = recipientType !== null;
   const step2Valid = (() => {
     if (recipientType === "new") {
-      const digits = newPhone.replace(/\D/g, '');
-      const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-      return newName.trim() !== "" && newPhone.trim() !== "" && actualDigits.length === 10;
+      const { countryCode, localNumber } = parsePhoneNumber(newPhone);
+      const isPhoneValid = countryCode === '+91'
+        ? localNumber.length === 10
+        : (localNumber.length >= 7 && localNumber.length <= 15);
+      return newName.trim() !== "" && localNumber !== "" && isPhoneValid;
     }
     if (recipientType === "customers") return selectedCustomers.length > 0;
     if (recipientType === "groups") return selectedGroups.length > 0;
@@ -1047,12 +1011,9 @@ const ReminderList = () => {
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
                         Phone Number
                       </label>
-                      <input
-                        type="tel"
-                        placeholder="+91 xxxxx xxxxx"
+                      <PhoneInput
                         value={newPhone}
-                        onChange={handleNewPhoneChange}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+                        onChange={setNewPhone}
                       />
                     </div>
                   </div>

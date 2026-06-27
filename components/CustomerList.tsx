@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { type Group } from '@/lib/groups';
 import { apiFetch } from '@/lib/api';
+import PhoneInput from './PhoneInput';
+import { parsePhoneNumber, cleanAndFormatPhone } from '@/lib/countries';
 
 type Customer = {
   _id: string;
@@ -18,7 +20,7 @@ type Customer = {
   createdAt: string;
 };
 
-const emptyForm = { name: '', phone: '+91 ', email: '', tags: [] as string[], group: '', notes: '', tagInput: '' };
+const emptyForm = { name: '', phone: '+91', email: '', tags: [] as string[], group: '', notes: '', tagInput: '' };
 
 const tagColors: Record<string, string> = {
   VIP: 'bg-emerald-50 text-emerald-600',
@@ -28,15 +30,7 @@ const tagColors: Record<string, string> = {
 };
 
 const formatPhone = (val: string) => {
-  if (!val) return '+91 ';
-  let digits = val.replace(/\D/g, '');
-  if (digits.startsWith('91') && digits.length > 10) {
-    digits = digits.slice(2);
-  }
-  digits = digits.slice(0, 10);
-  if (digits.length === 0) return '+91 ';
-  if (digits.length <= 5) return `+91 ${digits}`;
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  return cleanAndFormatPhone(val);
 };
 
 const CustomerList = () => {
@@ -70,39 +64,6 @@ const CustomerList = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalRecords: 0, totalPages: 1, currentPage: 1, limit: 10 });
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputVal = e.target.value;
-    
-    if (!inputVal.startsWith('+91 ')) {
-      if (inputVal === '+91' || inputVal === '+9' || inputVal === '+' || inputVal === '') {
-        inputVal = '+91 ';
-      } else {
-        const digits = inputVal.replace(/\D/g, '');
-        if (digits.startsWith('91') && digits.length > 10) {
-          inputVal = '+91 ' + digits.slice(2);
-        } else {
-          inputVal = '+91 ' + digits;
-        }
-      }
-    }
-
-    const suffix = inputVal.slice(4);
-    let digits = suffix.replace(/\D/g, '');
-    digits = digits.slice(0, 10);
-    
-    let formatted = '+91 ';
-    if (digits.length > 0) {
-      if (digits.length <= 5) {
-        formatted = `+91 ${digits}`;
-      } else {
-        formatted = `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
-      }
-    }
-    
-    setForm(f => ({ ...f, phone: formatted }));
-    setErrors(er => ({ ...er, phone: '' }));
-  };
 
   useEffect(() => {
     fetchCustomers(search, 1);
@@ -155,13 +116,19 @@ const CustomerList = () => {
     const e: Partial<typeof emptyForm> = {};
     if (!form.name.trim()) e.name = 'Name is required';
     
-    const digits = form.phone.replace(/\D/g, '');
-    const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-    
-    if (!form.phone.trim()) {
+    const { countryCode, localNumber } = parsePhoneNumber(form.phone);
+    if (!form.phone.trim() || !localNumber) {
       e.phone = 'Phone is required';
-    } else if (actualDigits.length !== 10) {
-      e.phone = 'Phone number must be exactly 10 digits';
+    } else {
+      if (countryCode === '+91') {
+        if (localNumber.length !== 10) {
+          e.phone = 'Phone number must be exactly 10 digits';
+        }
+      } else {
+        if (localNumber.length < 7 || localNumber.length > 15) {
+          e.phone = 'Phone number must be between 7 and 15 digits';
+        }
+      }
     }
     
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
@@ -244,9 +211,12 @@ const CustomerList = () => {
       return { name: cols[0] || '', phone: formatPhone(cols[1] || ''), email: cols[2] || '', tags: cols[3] ? cols[3].split(';') : [], notes: cols[5] || '' };
     }).filter(c => {
       if (!c.name || !c.phone) return false;
-      const digits = c.phone.replace(/\D/g, '');
-      const actualDigits = digits.startsWith('91') && digits.length > 10 ? digits.slice(2) : digits;
-      return actualDigits.length === 10;
+      const { countryCode, localNumber } = parsePhoneNumber(c.phone);
+      if (!localNumber) return false;
+      if (countryCode === '+91') {
+        return localNumber.length === 10;
+      }
+      return localNumber.length >= 7 && localNumber.length <= 15;
     });
     for (const c of toImport) {
       try { await apiFetch('/customers', { method: 'POST', body: JSON.stringify(c) }); } catch {}
@@ -440,21 +410,22 @@ const CustomerList = () => {
                   {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone <span className="text-red-400">*</span></label>
-                    <input type="tel" placeholder="+91 xxxxx xxxxx" value={form.phone}
-                      onChange={handlePhoneChange}
-                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.phone ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
-                    {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
-                    <input type="email" placeholder="mike@example.com" value={form.email}
-                      onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setErrors(er => ({ ...er, email: '' })); }}
-                      className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.email ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
-                    {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone <span className="text-red-400">*</span></label>
+                  <PhoneInput
+                    value={form.phone}
+                    onChange={val => { setForm(f => ({ ...f, phone: val })); setErrors(er => ({ ...er, phone: '' })); }}
+                    error={errors.phone}
+                  />
+                  {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
+                  <input type="email" placeholder="mike@example.com" value={form.email}
+                    onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setErrors(er => ({ ...er, email: '' })); }}
+                    className={`w-full px-4 py-3 bg-gray-50 rounded-2xl text-sm outline-none transition-all border ${errors.email ? 'border-red-300 bg-red-50' : 'border-transparent focus:ring-2 focus:ring-emerald-500/20'}`} />
+                  {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-1.5">
