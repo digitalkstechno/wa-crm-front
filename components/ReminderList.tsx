@@ -571,13 +571,12 @@ const ReminderList = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Reminders</h2>
         </div>
 
-
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={handleExportExcel}
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all shadow-sm"
@@ -586,33 +585,33 @@ const ReminderList = () => {
          Excel
         </button>
           {/* Customer Search Box */}
-          <div className="flex items-center bg-white border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-emerald-500 text-white text-xs font-bold ml-1 px-3 py-2.5 whitespace-nowrap">
+          <div className="flex w-full sm:w-auto items-center bg-white border border-gray-100 shadow-sm overflow-hidden rounded-xl">
+            <div className="bg-emerald-500 text-white text-xs font-bold px-3 py-2.5 whitespace-nowrap">
               Customer
             </div>
-            <div className="relative border-l border-gray-100">
+            <div className="relative border-l border-gray-100 flex-1">
               <input
                 type="text"
                 placeholder="Search customer"
                 value={customerSearchQuery}
                 onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                className="pl-4 py-2.5 text-sm focus:outline-none w-36"
+                className="pl-4 py-2.5 text-sm focus:outline-none w-full sm:w-36"
               />
             </div>
           </div>
 
           {/* Reminder Search Box */}
-          <div className="flex items-center bg-white border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-emerald-500 text-white text-xs font-bold ml-1 px-3 py-2.5 whitespace-nowrap">
+          <div className="flex w-full sm:w-auto items-center bg-white border border-gray-100 shadow-sm overflow-hidden rounded-xl">
+            <div className="bg-emerald-500 text-white text-xs font-bold px-3 py-2.5 whitespace-nowrap">
               Reminder
             </div>
-            <div className="relative border-l border-gray-100">
+            <div className="relative border-l border-gray-100 flex-1">
               <input
                 type="text"
                 placeholder="Search reminder"
                 value={reminderSearchQuery}
                 onChange={(e) => setReminderSearchQuery(e.target.value)}
-                className="pl-4 pr-4 py-2.5 text-sm focus:outline-none w-36"
+                className="pl-4 pr-4 py-2.5 text-sm focus:outline-none w-full sm:w-36"
               />
             </div>
           </div>
@@ -666,8 +665,8 @@ const ReminderList = () => {
 
       {/* Table */}
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-visible">
-        <div className="px-8 pt-6 pb-0 border-b border-gray-100 flex items-centerpx-8 pt-6 pb-0 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+        <div className="px-4 md:px-8 pt-6 pb-0 border-b border-gray-100 flex items-center justify-between overflow-x-auto hide-scrollbar">
+          <div className="flex items-center gap-1 min-w-max">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -731,10 +730,10 @@ const ReminderList = () => {
               return (
                 <div
                   key={reminder._id}
-                  className="px-8 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors group"
+                  className="px-4 md:px-8 py-5 flex flex-col md:flex-row md:items-center justify-between hover:bg-gray-50 transition-colors group gap-4 md:gap-0"
                 >
                   {/* Left: avatar + info */}
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex items-start md:items-center gap-4 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs border border-emerald-100 shrink-0">
                       {customerName
                         .split(" ")
@@ -747,7 +746,7 @@ const ReminderList = () => {
                       <h4 className="font-semibold text-gray-900 text-sm truncate">
                         {reminder.reminderName || reminder.title}
                       </h4>
-                      <div className="flex items-center gap-3 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 md:mt-0.5">
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <User className="w-3 h-3" /> {customerName}
                         </span>
@@ -792,13 +791,13 @@ const ReminderList = () => {
                   </div>
 
                   {/* Right: date/time + status + menu */}
-                  <div className="flex items-center gap-8 shrink-0">
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-sm font-semibold text-gray-800 justify-end">
+                  <div className="flex items-center justify-between md:justify-end gap-4 md:gap-8 shrink-0 w-full md:w-auto border-t border-gray-100 md:border-t-0 pt-4 md:pt-0 mt-2 md:mt-0">
+                    <div className="flex items-center md:flex-col md:items-end gap-3 md:gap-0">
+                      <div className="flex items-center gap-1 text-sm font-semibold text-gray-800 md:justify-end">
                         <Calendar className="w-3 h-3 text-gray-400" />{" "}
                         {dateObj.toLocaleDateString()}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-400 justify-end mt-0.5">
+                      <div className="flex items-center gap-1 text-xs text-gray-400 md:justify-end md:mt-0.5">
                         <Clock className="w-3 h-3" />{" "}
                         {dateObj.toLocaleTimeString([], {
                           hour: "2-digit",
@@ -807,25 +806,25 @@ const ReminderList = () => {
                       </div>
                     </div>
 
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.text} w-20 text-center`}
-                    >
-                      {s.label}
-                    </span>
-
-                    <div className="relative">
-                      <button
-                        onClick={() =>
-                          setOpenMenu(
-                            openMenu === reminder._id ? null : reminder._id,
-                          )
-                        }
-                        className="p-2 text-gray-300 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.text} w-20 text-center`}
                       >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenu === reminder._id && (
-                        <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
+                      {s.label}
+                      </span>
+                      <div className="relative">
+                        <button
+                          onClick={() =>
+                            setOpenMenu(
+                              openMenu === reminder._id ? null : reminder._id,
+                            )
+                          }
+                          className="p-2 text-gray-300 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 -mr-2 md:-mr-0"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {openMenu === reminder._id && (
+                          <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-lg z-10 w-36 py-1 text-sm">
                           <button
                             onClick={async () => {
                               setOpenMenu(null);
@@ -871,6 +870,7 @@ const ReminderList = () => {
                         </div>
                       )}
                     </div>
+                  </div>
                   </div>
                 </div>
               );

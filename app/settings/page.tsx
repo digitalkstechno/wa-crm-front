@@ -119,12 +119,12 @@ export default function SettingsPage() {
       )}
 
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-gray-100 overflow-x-auto hide-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-colors min-w-max ${
                 activeTab === tab.key
                   ? 'text-emerald-600 border-emerald-500'
                   : 'text-gray-400 border-transparent hover:text-gray-600'
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Name</label>
                   <input
@@ -181,7 +181,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleProfileSave}
                 disabled={savingProfile}
-                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl text-sm font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
+                className="flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl text-sm font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {savingProfile ? 'Saving...' : 'Save Profile'}
@@ -251,7 +251,7 @@ export default function SettingsPage() {
               <button
                 onClick={handlePasswordSave}
                 disabled={savingPassword}
-                className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl text-sm font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
+                className="flex w-full sm:w-auto justify-center items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl text-sm font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
               >
                 <Lock className="w-4 h-4" />
                 {savingPassword ? 'Updating...' : 'Update Password'}

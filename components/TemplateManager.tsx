@@ -130,22 +130,22 @@ export default function TemplateManager() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">Message Templates</h2>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search templates..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm w-64"
+              className="pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm w-full sm:w-64"
             />
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200"
+            className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200"
           >
             <Plus className="w-4 h-4" /> Create Template
           </button>
@@ -162,64 +162,98 @@ export default function TemplateManager() {
               {pagination.totalRecords} total
             </span>
           </div>
-          <table className="w-full text-left table-fixed">
-            <thead>
-              <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                <th className="px-8 py-3 w-[35%]">Name</th>
-                <th className="px-8 py-3 w-[50%]">Message</th>
-                <th className=" w-[15%]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-8 py-16 text-center text-sm text-gray-400"
-                  >
-                    Loading...
-                  </td>
+          {/* Mobile View (Cards) */}
+          <div className="md:hidden divide-y divide-gray-50">
+            {loading ? (
+              <div className="px-6 py-10 text-center text-sm text-gray-400">Loading...</div>
+            ) : templates.length === 0 ? (
+              <div className="px-6 py-10 text-center text-sm text-gray-400">No templates found</div>
+            ) : (
+              templates.map((t) => (
+                <div
+                  key={t._id}
+                  onClick={() => setPreviewId(t._id)}
+                  className={`p-5 cursor-pointer transition-colors ${
+                    previewId === t._id ? "bg-emerald-50/50" : "hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-sm font-semibold text-gray-900 truncate pr-4">
+                      {t.name}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMenuOpen(e, t._id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all -mr-1.5"
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-500 line-clamp-2">{t.body}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View (Table) */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left table-fixed min-w-[600px]">
+              <thead>
+                <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                  <th className="px-8 py-3 w-[35%]">Name</th>
+                  <th className="px-8 py-3 w-[50%]">Message</th>
+                  <th className=" w-[15%]">Actions</th>
                 </tr>
-              ) : templates.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-8 py-16 text-center text-sm text-gray-400"
-                  >
-                    No templates found
-                  </td>
-                </tr>
-              ) : (
-                templates.map((t) => (
-                  <tr
-                    key={t._id}
-                    onClick={() => setPreviewId(t._id)}
-                    className={`cursor-pointer transition-colors ${previewId === t._id ? "bg-emerald-50/50" : "hover:bg-gray-50"}`}
-                  >
-                    <td className="px-8 py-4">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {t.name}
-                      </p>
-                    </td>
-                    <td className="px-8 py-4">
-                      <p className="text-sm text-gray-500 truncate">{t.body}</p>
-                    </td>
-                    <td className="px-8 py-4 text-right pr-8 ">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMenuOpen(e, t._id);
-                        }}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all"
-                      >
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {loading ? (
+                  <tr>
+                    <td colSpan={3} className="px-8 py-16 text-center text-sm text-gray-400">
+                      Loading...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : templates.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-8 py-16 text-center text-sm text-gray-400">
+                      No templates found
+                    </td>
+                  </tr>
+                ) : (
+                  templates.map((t) => (
+                    <tr
+                      key={t._id}
+                      onClick={() => setPreviewId(t._id)}
+                      className={`cursor-pointer transition-colors ${
+                        previewId === t._id ? "bg-emerald-50/50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <td className="px-8 py-4">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {t.name}
+                        </p>
+                      </td>
+                      <td className="px-8 py-4">
+                        <p className="text-sm text-gray-500 truncate">{t.body}</p>
+                      </td>
+                      <td className="px-8 py-4 text-right pr-8">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMenuOpen(e, t._id);
+                          }}
+                          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all"
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
@@ -391,7 +425,7 @@ export default function TemplateManager() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-[70] flex flex-col"
+              className="fixed right-0 top-0 h-full w-full max-w-[500px] bg-white shadow-2xl z-[70] flex flex-col"
             >
               <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100">
                 <div className="flex items-center gap-3">

@@ -176,10 +176,10 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
           {lastUpdated && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400">
               Last updated:{" "}
               {lastUpdated.toLocaleTimeString([], {
                 hour: "2-digit",
@@ -192,12 +192,12 @@ const Dashboard = () => {
         <button
           onClick={() => fetchData(true)}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50"
+          className="flex items-center justify-center gap-2 p-2 w-9 h-9 md:w-auto md:h-auto md:px-4 md:py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50"
         >
           <RefreshCw
             className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
           />
-          Refresh
+          <span className="hidden md:inline">Refresh</span>
         </button>
       </div>
 
@@ -345,10 +345,7 @@ const Dashboard = () => {
 
       {/* Recent Activity */}
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-        {/* <div className="p-8 flex items-center justify-between border-b border-gray-50">
-          <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-        </div> */}
-        <div className="p-8 flex items-center justify-between border-b border-gray-50">
+        <div className="p-6 md:p-8 flex items-center justify-between border-b border-gray-50">
           <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
           <button
             onClick={() => {
@@ -361,8 +358,60 @@ const Dashboard = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+        {/* Mobile Cards View */}
+        <div className="md:hidden divide-y divide-gray-50">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-6">
+                  <div className="h-4 bg-gray-100 rounded animate-pulse mb-3" />
+                  <div className="h-3 w-2/3 bg-gray-100 rounded animate-pulse" />
+                </div>
+              ))
+            : data?.recentActivity.map((activity) => {
+                const d = new Date(activity.scheduledAt);
+                return (
+                  <div key={activity._id} className="p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
+                          {activity.customerName
+                            .split(" ")
+                            .map((w) => w[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {activity.customerName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {activity.title}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${statusStyle[activity.status] || "bg-gray-100 text-gray-500"}`}
+                      >
+                        {activity.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+                      <Clock className="w-3.5 h-3.5" />
+                      {d.toLocaleDateString()}{" "}
+                      {d.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
             <thead>
               <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
                 <th className="px-8 py-4">Customer</th>
@@ -433,8 +482,8 @@ const Dashboard = () => {
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl my-8">
             {/* Header */}
-            <div className="flex items-center justify-between px-8 pt-7 pb-5 border-b border-gray-100">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 md:px-8 pt-7 pb-5 border-b border-gray-100 gap-4 sm:gap-0">
+              <div className="flex items-center justify-between w-full sm:w-auto">
                 <button
                   onClick={() =>
                     setCalendarDate(
@@ -445,7 +494,7 @@ const Dashboard = () => {
                 >
                   <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <h3 className="text-lg font-bold text-gray-900 w-44 text-center">
+                <h3 className="text-lg font-bold text-gray-900 sm:w-44 text-center">
                   {calendarDate.toLocaleString("default", {
                     month: "long",
                     year: "numeric",
@@ -461,23 +510,29 @@ const Dashboard = () => {
                 >
                   <ChevronRight className="w-5 h-5 text-gray-600" />
                 </button>
+                <button
+                  onClick={() => setShowCalendar(false)}
+                  className="hidden sm:block p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
               <button
                 onClick={() => setShowCalendar(false)}
-                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                className="sm:hidden absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Calendar Body */}
-            <div className="px-6 py-6">
+            <div className="px-4 md:px-6 py-6">
               {/* Day Headers */}
               <div className="grid grid-cols-7 mb-2">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <div
                     key={d}
-                    className="text-center text-[11px] font-bold text-gray-400 uppercase py-2"
+                    className="text-center text-[10px] md:text-[11px] font-bold text-gray-400 uppercase py-2"
                   >
                     {d}
                   </div>
