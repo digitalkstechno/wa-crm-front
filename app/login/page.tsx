@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 export default function LoginPage() {
   const { login, isLoggedIn, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: 'admin@gmail.com', password: '123456' });
 
   useEffect(() => {
     if (!authLoading && isLoggedIn) router.replace('/');
@@ -47,7 +47,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 mb-4">
             <MessageSquare className="text-white w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">WhatsApp CRM</h1>
+          <h1 className="text-2xl font-bold text-gray-900">WP CRM</h1>
           <p className="text-sm text-gray-400 mt-1">Reminder Suite</p>
         </div>
 

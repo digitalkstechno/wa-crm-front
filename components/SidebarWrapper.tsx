@@ -40,7 +40,7 @@ export default function SidebarWrapper({ children }: { children: React.ReactNode
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center shrink-0">
             <MessageSquare className="text-white w-4 h-4" />
           </div>
-          <span className="font-bold text-gray-900 text-sm">WhatsApp CRM</span>
+          <span className="font-bold text-gray-900 text-sm">WP CRM</span>
         </div>
         <button
           onClick={() => setMobileMenuOpen(true)}
